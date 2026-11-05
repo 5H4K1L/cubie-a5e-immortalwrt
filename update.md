@@ -5,7 +5,7 @@
 **Default branch:** `main`  
 **Related project:** [OpenWrt companion repository](https://github.com/5H4K1L/cubie-a5e-openwrt)
 
-> Start here when resuming. The Linux 6.18 Sun55i IOMMU callback compile blocker has been corrected, and the latest ImmortalWrt kernel-validation workflow (#8) passed through kernel compilation, DTB collection, and artifact upload. The project has not yet built a complete firmware image.
+> Start here when resuming. ImmortalWrt kernel-validation run [#14](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42018099723) on commit `7b45384289f41c39e4d8c10de5f51ddb170d5b22` completed successfully. Its artifact was downloaded and independently inspected: Linux 6.18.60 Image, A5E DTB, merged kernel config, and build manifest are present. IOMMU config symbols are enabled; the DTB has the IOMMU controller but no `iommus` client properties. This remains a kernel-validation build, not a complete firmware image.
 
 ## Goal and safety constraints
 
@@ -242,3 +242,66 @@ The project kernel config fragment now explicitly requests `CONFIG_IOMMU_SUPPORT
 The first workflow-file edit was malformed and produced run [#13](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42017995765), which failed before creating a job. The workflow file was then rewritten and re-read to verify its complete YAML content. The corrected workflow is commit `7b45384289f41c39e4d8c10de5f51ddb170d5b22`; validation run [#14](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42018099723) was queued when last checked. Older runs #10–#12 were already in progress and are not evidence for the new assertions.
 
 Do not treat the new assertions as passed until run #14 reaches the relevant steps. No external Wi-Fi, PCIe, or DRAM patch was copied into the kernel tree.
+
+
+## Latest successful artifact inspection — run #14 (2026-11-05)
+
+**Scope:** ImmortalWrt repository only. No OpenWrt repository files or workflows were changed or triggered during this inspection.
+
+- Workflow run: [#14](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42018099723)
+- Project commit: `7b45384289f41c39e4d8c10de5f51ddb170d5b22`
+- Branch: `main`
+- Job: `kernel`, completed successfully; all 10 substantive steps passed, including configuration, IOMMU patch dry-run/application, host tools/toolchain, Linux target compile, artifact collection and upload.
+- Artifact: `cubie-a5e-kernel-validation`, ID `13415116354`, ZIP size 7,061,627 bytes; expires 2026-11-19.
+- Pinned upstream: `immortalwrt/immortalwrt` commit `4765b657625ec5bbda74b44400465fe043802b30`.
+- Kernel: Linux 6.18.60, ARM64 Image, 15,501,320 bytes.
+- DTB: 30,722 bytes, FDT version 17.
+- Artifact contains `Image`, `sun55i-a527-cubie-a5e.dtb`, `kernel.config`, and `BUILD-MANIFEST.txt`.
+
+### Verified checksums from the artifact manifest
+
+| File | SHA-256 |
+|---|---|
+| `Image` | `77cec8d3385e8b4ba63a06d7a21f9d485deed91bf98b7193cc562b36a13abcc3` |
+| `sun55i-a527-cubie-a5e.dtb` | `c27efbf42f23f50fccf9202f772de312b170d86a1601a82ba16553a11a702cf6` |
+| `kernel.config` | `7cf9ce235cb5b19c1052b9be341592560a1534ec5fe1d62d49ebbcf610e0571d` |
+
+### Kernel configuration confirmed in the actual compiled config
+
+- `CONFIG_IOMMU_SUPPORT=y`
+- `CONFIG_SUN55I_IOMMU=y`
+- `CONFIG_PCI=y`
+- `CONFIG_PCI_MSI=y`
+- `CONFIG_STMMAC_ETH=y`
+- `CONFIG_DWMAC_SUN8I=y`
+- `CONFIG_WLAN=y`
+- `CONFIG_MMC=y`
+- `CONFIG_MMC_SUNXI=y`
+
+### DTB structure confirmed from the compiled binary
+
+- IOMMU controller: `/iommu@2010000`, compatible `allwinner,sun55i-a523-iommu`, enabled by default, `#iommu-cells = <2>`.
+- **No node in this DTB has an `iommus` property.** The controller is described, but no DMA client is attached through an IOMMU phandle. This does not prove active translation.
+- MMC controller `/soc/mmc@4021000` is enabled, marked non-removable, and supplies the SDIO Wi-Fi child placeholder `wifi@1`. That child currently has only a `reg` property and no `compatible` property.
+- The board's fixed 3.3 V Wi-Fi regulator is present and referenced by the MMC controller. The current DTS patch sets MMC1 maximum frequency to 35 MHz and MMC1 pin drive strength to 40 mA.
+- Both GMAC controllers are enabled: `/soc/ethernet@4500000` and `/soc/ethernet@4510000`.
+- PCIe root complex `/soc/pcie@4800000` is enabled and has reset GPIO and PCIe 3.3 V supply properties.
+- No explicit `/memory` or `/reserved-memory` nodes were found. Runtime bootloader FDT fixups remain important for memory sizing and reservations.
+
+### Interpretation and decisions
+
+1. **IOMMU compile blocker: resolved for the pinned Linux 6.18.60 build.** The driver is compiled with IOMMU enabled and the callback patch applies. Runtime attachment/translation remains unproven because no DTB client is mapped and hardware testing has not happened.
+2. **Do not add arbitrary `iommus` properties.** First establish the A527 IOMMU master IDs, driver expectations, and which DMA-capable peripherals are supported by the current driver/binding. Use the vendor BSP only as a reference and validate against the Linux 6.18 driver.
+3. **Wi-Fi is not yet hardware-validated.** The DTB has the SDIO slot and regulator, but the child is only a placeholder. Do not add PM1/BLDO1 power sequencing from the external community patch until the exact board wiring and polarity are confirmed.
+4. **PCIe and both Ethernet controllers are described/enabled, not proven working.** Runtime tests are still required.
+5. The artifact is still only a raw kernel + DTB + config + manifest. It is not a FIT, root filesystem, complete SD-card image, or safe-to-flash firmware. Do not flash it.
+
+### Next technical steps
+
+1. Review the full Linux 6.18 Sun55i IOMMU driver and binding alongside the vendor BSP to identify documented master IDs and safe candidate clients. Do not modify the DTB until the mapping is evidence-based.
+2. Inspect the pinned A5E DTS patch series for PCIe PHY, SDIO Wi-Fi, regulators and both GMACs; distinguish enabled nodes from hardware-tested features.
+3. Obtain/read-only inspect the known-working FIT and boot files to record the exact FIT configuration, load/entry addresses, embedded DTB and root PARTUUID behavior.
+4. Design a kernel/rootfs image path that preserves the known-working early boot payload. Do not use the generic sunxi image generator's new U-Boot payload on the working card.
+5. Only after static image review, test from a separate microSD card with the known-good bootloader preserved and a recovery path available.
+
+**Status rule:** run #14 supersedes the earlier note above that run #14 was queued and supersedes any implication that artifact contents were not yet independently inspected. Historical run #8 details remain as historical CI history.
