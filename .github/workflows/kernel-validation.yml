@@ -45,6 +45,16 @@ jobs:
           grep -E '^CONFIG_TARGET_sunxi=y$|^CONFIG_TARGET_sunxi_cortexa53=y$' .config
           grep -E '^CONFIG_(DWMAC_SUN55I|PINCTRL_SUN55I_A523|PINCTRL_SUN55I_A523_R|SUN55I_A523_CCU|SUN55I_A523_MCU_CCU|SUN55I_A523_R_CCU|SUN55I_PCK600)=y$' target/linux/sunxi/cortexa53/config-6.18
 
+      - name: Apply Linux 6.18 sun55i IOMMU callback compatibility fix
+        run: |
+          set -eu
+          DRIVER="immortalwrt/target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c"
+          test -f "$DRIVER"
+          grep -q 'static int sun55i_iommu_attach_dev' "$DRIVER"
+          patch --dry-run -d "$(dirname "$DRIVER")" -p1 < build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
+          patch -d "$(dirname "$DRIVER")" -p1 < build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
+          grep -A5 -F 'static int sun55i_iommu_attach_dev' "$DRIVER"
+
       - name: Build ImmortalWrt host tools and ARM64 toolchain
         run: |
           cd immortalwrt
