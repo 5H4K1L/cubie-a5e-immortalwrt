@@ -79,7 +79,7 @@ jobs:
           KERNEL_CONFIG="$(find immortalwrt/build_dir -type f -path '*/linux-*/.config' -print -quit)"
           test -n "$KERNEL_CONFIG"
           cp "$KERNEL_CONFIG" output/kernel.config
-          KERNEL_VERSION="$(strings output/Image | sed -n 's/^Linux version \\([^ ]*\\).*/\\1/p' | head -n 1)"
+          KERNEL_VERSION="$(strings output/Image | awk '/^Linux version / {print $3; exit}')"
           test -n "$KERNEL_VERSION"
           {
             echo "project=ImmortalWrt"
