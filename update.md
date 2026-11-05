@@ -200,3 +200,21 @@ The downloaded validation ZIPs were extracted and checked:
 - ImmortalWrt DTB contains the IOMMU controller node, but no `iommus` client property was found in the tree. The presence of the controller node alone does not prove that any device is attached to it.
 
 The current CI artifact ZIPs contain only `Image` and DTB. A workflow update is now being tested in both repositories to add the final kernel `.config` and a `BUILD-MANIFEST.txt` with pinned source revision, kernel version and SHA-256 values. Do not treat that new workflow as validated until its run completes successfully.
+
+
+## Critical U-Boot / 1 GB DRAM finding — 2026-11-05
+
+The pinned ImmortalWrt source's `package/boot/uboot-sunxi/Makefile` builds U-Boot **2026.04** for the `radxa-cubie-a5e` target and depends on `trusted-firmware-a-sunxi-a523`. The upstream `v2026.04` `configs/radxa-cubie-a5e_defconfig` currently contains:
+
+```text
+CONFIG_DRAM_SUNXI_TPR6=0x38000000
+CONFIG_DRAM_SUNXI_TPR10=0x802f3333
+CONFIG_DRAM_SUNXI_TPR11=0xc7c5c4c2
+CONFIG_DRAM_SUNXI_TPR12=0x3533302f
+```
+
+These are exactly the "previous" values in the candidate community 1 GB timing change documented in the companion OpenWrt repository's `docs/DRAM-1GB.md`. That community candidate proposes different values for the 1 GB variant. This does **not** prove the default values are wrong for this exact PCB/DRAM chip, nor does it prove the candidate values are correct; it does prove that the current ImmortalWrt U-Boot build has no documented 1 GB timing override in the reviewed defconfig/package configuration.
+
+**Do not flash a full ImmortalWrt SD image built with this default U-Boot payload.** The standard image generator writes the newly built `u-boot-with-spl.bin` at offset `0x2000`, replacing the early boot payload on the target SD card. First identify and fingerprint the known-working early boot payload and establish the active SD/SPI boot path. Any 1 GB timing change must be validated against the exact board revision, DRAM part and a recovery plan before it is included in a candidate bootloader.
+
+Immediate safe direction: continue kernel/DTB and rootfs work separately; treat the default U-Boot binary as a separately gated artifact, not as approved for the user's 1 GB board.
