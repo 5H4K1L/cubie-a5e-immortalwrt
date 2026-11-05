@@ -218,3 +218,18 @@ These are exactly the "previous" values in the candidate community 1 GB timing c
 **Do not flash a full ImmortalWrt SD image built with this default U-Boot payload.** The standard image generator writes the newly built `u-boot-with-spl.bin` at offset `0x2000`, replacing the early boot payload on the target SD card. First identify and fingerprint the known-working early boot payload and establish the active SD/SPI boot path. Any 1 GB timing change must be validated against the exact board revision, DRAM part and a recovery plan before it is included in a candidate bootloader.
 
 Immediate safe direction: continue kernel/DTB and rootfs work separately; treat the default U-Boot binary as a separately gated artifact, not as approved for the user's 1 GB board.
+
+
+## External repository review — 2026-11-05
+
+A separate review has been committed at [docs/EXTERNAL-REPOSITORY-REVIEW.md](docs/EXTERNAL-REPOSITORY-REVIEW.md). Key decisions:
+
+- Keep the Medvedolog PM1 Wi-Fi reset / BLDO1 `vqmmc` change as an unverified candidate; current A5E DTS already has PL7, mmc1, 35 MHz and 40 mA drive strength. Verify regulator/GPIO references and board behavior before adding it.
+- Use Zuyih's older vendor IOMMU driver only as a register/master-ID reference, not as a Linux 6.18 replacement.
+- The pinned ImmortalWrt PCIe driver already includes `MSI_FLAG_PCI_MSIX`; no duplicate MSI-X patch is needed.
+- Treat the NixOS 1 GB DRAM profile as a research lead only. Do not change U-Boot DRAM values without exact RAM-chip identification and recovery evidence.
+- Follow Radxa Image Builder's provenance and bootloader-preservation discipline for future image generation.
+
+**Latest CI status at handoff:** workflow run [#10](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42012445649), commit `161d6d04af912002ba28476e09d1eff7f4fc1969`, was still `in_progress` when checked. IOMMU patch application passed; host tools/toolchain was still running; kernel compile had not started. Earlier run [#8](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41994608070) is the last confirmed successful kernel validation.
+
+**Next:** wait for run #10, inspect its logs/artifacts, then add explicit CI assertions for `CONFIG_IOMMU_SUPPORT=y` and `CONFIG_SUN55I_IOMMU=y` and re-check the generated DTB's IOMMU client phandles. Do not import the external Wi-Fi or DRAM changes yet.
