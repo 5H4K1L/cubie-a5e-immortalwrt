@@ -346,3 +346,16 @@ A detailed procedure and no-flash warning are in [docs/FULL-IMAGE-BUILD-INSPECTI
 
 
 Workflow review correction: after rereading the committed YAML, the build and patch steps' working directories were corrected in commit `ec03a8661a8cff0fbc2021c33c0566c1eae916a0`. The workflow remains manual-only. It has not been dispatched or run; no full-image build result is claimed.
+
+
+## 2026-11-05 — Full-image inspection workflow path fix
+
+- Failed run: [A5E ImmortalWrt full-image inspection #1](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42043736363).
+- The kernel-validation workflow #14 remains successful; this failure was isolated to the separate manual full-image inspection workflow.
+- Failure step: `Apply Linux 6.18 sun55i IOMMU callback compatibility fix`.
+- Root cause: the patch dry-run used the correct repository-root-relative path `build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch`, but the actual `patch` invocation incorrectly used `../build/patches/...`. The shell was still in the workspace root, so the redirection failed with `No such file or directory`.
+- Corrected the actual invocation to use the same `build/patches/...` path as the dry-run.
+- Fix commit: `9d6957cf0becb4f19b19a74bdb4484e996242bd3`.
+- The image build, image inspection and artifact upload were skipped in the failed run; no image was produced by that run.
+- The Kconfig resolver printed recursive-dependency diagnostics for unrelated video/Qt5, fwknop and squeezelite feed symbols, but `make defconfig` completed and the target plus IOMMU configuration assertions passed. These warnings were not the fatal exit.
+- Next validation: rerun the full-image inspection workflow. Even if CI succeeds, the generated image remains inspection-only and must not be flashed until its embedded U-Boot/SPL is compared with the known-working 1 GB boot chain.
