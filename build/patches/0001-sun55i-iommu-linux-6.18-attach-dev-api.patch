@@ -1,0 +1,19 @@
+From: A5E build validation
+Subject: sunxi: update sun55i IOMMU attach_dev callback for Linux 6.18
+
+The iommu_domain_ops.attach_dev callback in Linux 6.18 takes the previous
+domain as a third argument. Keep the driver's existing rollback logic,
+which tracks the active hardware domain internally, and accept the new
+callback signature.
+
+--- a/target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c
++++ b/target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c
+@@
+ static int sun55i_iommu_attach_dev(struct iommu_domain *domain,
+-\t\t\t\t   struct device *dev)
++\t\t\t\t   struct device *dev,
++\t\t\t\t   struct iommu_domain *old_domain_arg)
+ {
++\t(void)old_domain_arg;
+ \tstruct sunxi_iommu_domain *sunxi_domain =
+ \t\tcontainer_of(domain, struct sunxi_iommu_domain, domain);
