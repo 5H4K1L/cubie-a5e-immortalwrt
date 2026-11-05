@@ -185,3 +185,18 @@ The principal ImmortalWrt kernel patch series responsible includes:
 **Interpretation:** both kernels compile, but their hardware enablement is not equivalent. ImmortalWrt is the better current A5E feature baseline. Porting its relevant kernel patch series into the OpenWrt branch should be a separate, staged change with patch-application and kernel CI validation; do not copy the DTB binary itself or assume every ImmortalWrt patch is safe to transplant without checking dependencies.
 
 The workflow artifacts contain only `Image` and DTB. They do not include the final kernel `.config`, preprocessed DTS, or full build log; future validation runs should consider uploading a kernel config and build manifest alongside the binary outputs.
+ 
+
+## Follow-up artifact hashes and structural inspection
+
+The downloaded validation ZIPs were extracted and checked:
+- OpenWrt `Image`: 14,764,040 bytes; SHA-256 `0ad0d789f4cdd1c66be70a00b17f1fb5301e5e76afef801a31667a52058127e9`.
+- OpenWrt DTB: 16,938 bytes; SHA-256 `623f0efb2e74daea4bc69413699e66e001e964afcf36412014760d60da5b9d20`.
+- ImmortalWrt `Image`: 15,501,320 bytes; SHA-256 `5bdd944d7acb3e83bad2f92e3d6232389d4c6b542251dd94897c3d57166c202e`.
+- ImmortalWrt DTB: 30,722 bytes; SHA-256 `c27efbf42f23f50fccf9202f772de312b170d86a1601a82ba16553a11a702cf6`.
+- Both kernel Images identify as ARM64 boot executable Images and contain Linux version 6.18.60.
+- Both DTBs identify the board correctly and describe eight Cortex-A55 CPUs.
+- A structural FDT parser counted 99 nodes in the OpenWrt DTB and 188 in the ImmortalWrt DTB. Neither DTB contains `/memory` or `/reserved-memory`.
+- ImmortalWrt DTB contains the IOMMU controller node, but no `iommus` client property was found in the tree. The presence of the controller node alone does not prove that any device is attached to it.
+
+The current CI artifact ZIPs contain only `Image` and DTB. A workflow update is now being tested in both repositories to add the final kernel `.config` and a `BUILD-MANIFEST.txt` with pinned source revision, kernel version and SHA-256 values. Do not treat that new workflow as validated until its run completes successfully.
