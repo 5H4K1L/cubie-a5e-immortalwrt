@@ -10,16 +10,16 @@ callback signature.
 +++ b/target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c
 @@ -759,10 +759,13 @@
  static int sun55i_iommu_attach_dev(struct iommu_domain *domain,
--\t\t\t\t   struct device *dev)
-+\t\t\t\t   struct device *dev,
-+\t\t\t\t   struct iommu_domain *old_domain_arg)
+				   struct device *dev)
++				   struct device *dev,
++				   struct iommu_domain *old_domain_arg)
  {
- \tstruct sunxi_iommu_domain *sunxi_domain =
- \t\tcontainer_of(domain, struct sunxi_iommu_domain, domain);
- \tstruct sunxi_iommu_domain *old_domain = NULL;
- \tstruct sunxi_iommu_owner *owner = dev_iommu_priv_get(dev);
- \tunsigned long flags;
- \tint ret;
+ 	struct sunxi_iommu_domain *sunxi_domain =
+ 		container_of(domain, struct sunxi_iommu_domain, domain);
+ 	struct sunxi_iommu_domain *old_domain = NULL;
+ 	struct sunxi_iommu_owner *owner = dev_iommu_priv_get(dev);
+ 	unsigned long flags;
+ 	int ret;
  
-+\t(void)old_domain_arg;
++	(void)old_domain_arg;
 +
