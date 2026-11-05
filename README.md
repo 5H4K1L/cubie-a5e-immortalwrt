@@ -2,9 +2,13 @@
 
 Independent ImmortalWrt bring-up and build research for the **Radxa Cubie A5E V1.20 (Allwinner A527, 1 GB RAM)**.
 
+## Project handoff
+
+Start with **[update.md](update.md)** for the latest CI results, IOMMU fix history, artifact inspection, 1 GB DRAM cautions, and next actions.
+
 ## Current phase
 
-This repository starts with a **kernel/device-tree validation workflow**. It is not yet a complete firmware build and its artifacts are not flashable firmware.
+This repository currently has a successful **kernel/device-tree validation workflow**. It is not yet a complete firmware build and its artifacts are not flashable firmware.
 
 The initial validation is intended to confirm that the pinned ImmortalWrt source can configure and compile the ARM64 sunxi kernel and produce the Cubie A5E device tree.
 
