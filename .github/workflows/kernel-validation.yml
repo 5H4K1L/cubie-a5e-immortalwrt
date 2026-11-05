@@ -43,7 +43,130 @@ jobs:
           cd immortalwrt
           make defconfig
           grep -E '^CONFIG_TARGET_sunxi=y$|^CONFIG_TARGET_sunxi_cortexa53=y$' .config
-          grep -E '^CONFIG_(DWMAC_SUN55I|PINCTRL_SUN55I_A523|PINCTRL_SUN55I_A523_R|SUN55I_A523_CCU|SUN55I_A523_MCU_CCU|SUN55I_A523_R_CCU|SUN55I_PCK600)=y$' target/linux/sunxi/cortexa53/config-6.18
+          grep -E '^CONFIG_(DWMAC_SUN55I|PINCTRL_SUN55I_A523|PINCTRL_SUN55I_A523_R|SUN55I_A523_CCU|SUN55I_A523_MCU_CCU|SUN55I_A523_R_CCU|SUN55I_PCK600)=y
+
+      - name: Apply Linux 6.18 sun55i IOMMU callback compatibility fix
+        run: |
+          set -eu
+          DRIVER="immortalwrt/target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c"
+          test -f "$DRIVER"
+          grep -q 'static int sun55i_iommu_attach_dev' "$DRIVER"
+          patch --dry-run -d "$(dirname "$DRIVER")" -p1 < build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
+          patch -d "$(dirname "$DRIVER")" -p1 < build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
+          grep -A5 -F 'static int sun55i_iommu_attach_dev' "$DRIVER"
+          PCIE_DRIVER="immortalwrt/target/linux/sunxi/files/drivers/pci/pcie-sunxi/pcie-sunxi-rc.c"
+          test -f "$PCIE_DRIVER"
+          grep -q 'MSI_FLAG_PCI_MSIX' "$PCIE_DRIVER"
+          git -C immortalwrt diff --check
+
+      - name: Build ImmortalWrt host tools and ARM64 toolchain
+        run: |
+          cd immortalwrt
+          make -j2 tools/install V=s
+          make -j2 toolchain/install V=s
+
+      - name: Compile ImmortalWrt Linux target
+        run: |
+          cd immortalwrt
+          make -j2 target/linux/compile V=s
+
+      - name: Collect A5E kernel and device tree
+        run: |
+          set -eu
+          mkdir -p output
+          IMAGE="$(find immortalwrt/build_dir -type f -path '*/arch/arm64/boot/Image' -print -quit)"
+          DTB="$(find immortalwrt/build_dir -type f -path '*/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dtb' -print -quit)"
+          test -n "$IMAGE"
+          test -n "$DTB"
+          cp "$IMAGE" output/Image
+          cp "$DTB" output/sun55i-a527-cubie-a5e.dtb
+          KERNEL_CONFIG="$(find immortalwrt/build_dir -type f -path '*/linux-*/.config' -print -quit)"
+          test -n "$KERNEL_CONFIG"
+          cp "$KERNEL_CONFIG" output/kernel.config
+          KERNEL_VERSION="$(strings output/Image | awk '/^Linux version / {print $3; exit}')"
+          test -n "$KERNEL_VERSION"
+          {
+            echo "project=ImmortalWrt"
+            echo "project_commit=$(git rev-parse HEAD)"
+            echo "upstream_repository=immortalwrt/immortalwrt"
+            echo "upstream_commit=4765b657625ec5bbda74b44400465fe043802b30"
+            echo "target=sunxi/cortexa53"
+            echo "kernel_version=$KERNEL_VERSION"
+            echo "board_compatible=radxa,cubie-a5e allwinner,sun55i-a527"
+            echo "files:"
+            sha256sum output/Image output/sun55i-a527-cubie-a5e.dtb output/kernel.config
+          } > output/BUILD-MANIFEST.txt
+          ls -lh output
+          cat output/BUILD-MANIFEST.txt
+
+      - name: Upload kernel validation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cubie-a5e-kernel-validation
+          path: output/*
+          if-no-files-found: error
+          retention-days: 14
+ target/linux/sunxi/cortexa53/config-6.18
+          grep -E '^CONFIG_(IOMMU_SUPPORT|SUN55I_IOMMU)=y
+
+      - name: Apply Linux 6.18 sun55i IOMMU callback compatibility fix
+        run: |
+          set -eu
+          DRIVER="immortalwrt/target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c"
+          test -f "$DRIVER"
+          grep -q 'static int sun55i_iommu_attach_dev' "$DRIVER"
+          patch --dry-run -d "$(dirname "$DRIVER")" -p1 < build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
+          patch -d "$(dirname "$DRIVER")" -p1 < build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
+          grep -A5 -F 'static int sun55i_iommu_attach_dev' "$DRIVER"
+
+      - name: Build ImmortalWrt host tools and ARM64 toolchain
+        run: |
+          cd immortalwrt
+          make -j2 tools/install V=s
+          make -j2 toolchain/install V=s
+
+      - name: Compile ImmortalWrt Linux target
+        run: |
+          cd immortalwrt
+          make -j2 target/linux/compile V=s
+
+      - name: Collect A5E kernel and device tree
+        run: |
+          set -eu
+          mkdir -p output
+          IMAGE="$(find immortalwrt/build_dir -type f -path '*/arch/arm64/boot/Image' -print -quit)"
+          DTB="$(find immortalwrt/build_dir -type f -path '*/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dtb' -print -quit)"
+          test -n "$IMAGE"
+          test -n "$DTB"
+          cp "$IMAGE" output/Image
+          cp "$DTB" output/sun55i-a527-cubie-a5e.dtb
+          KERNEL_CONFIG="$(find immortalwrt/build_dir -type f -path '*/linux-*/.config' -print -quit)"
+          test -n "$KERNEL_CONFIG"
+          cp "$KERNEL_CONFIG" output/kernel.config
+          KERNEL_VERSION="$(strings output/Image | awk '/^Linux version / {print $3; exit}')"
+          test -n "$KERNEL_VERSION"
+          {
+            echo "project=ImmortalWrt"
+            echo "project_commit=$(git rev-parse HEAD)"
+            echo "upstream_repository=immortalwrt/immortalwrt"
+            echo "upstream_commit=4765b657625ec5bbda74b44400465fe043802b30"
+            echo "target=sunxi/cortexa53"
+            echo "kernel_version=$KERNEL_VERSION"
+            echo "board_compatible=radxa,cubie-a5e allwinner,sun55i-a527"
+            echo "files:"
+            sha256sum output/Image output/sun55i-a527-cubie-a5e.dtb output/kernel.config
+          } > output/BUILD-MANIFEST.txt
+          ls -lh output
+          cat output/BUILD-MANIFEST.txt
+
+      - name: Upload kernel validation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cubie-a5e-kernel-validation
+          path: output/*
+          if-no-files-found: error
+          retention-days: 14
+ target/linux/sunxi/cortexa53/config-6.18
 
       - name: Apply Linux 6.18 sun55i IOMMU callback compatibility fix
         run: |
