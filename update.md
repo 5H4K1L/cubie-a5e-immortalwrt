@@ -305,3 +305,18 @@ Do not treat the new assertions as passed until run #14 reaches the relevant ste
 5. Only after static image review, test from a separate microSD card with the known-good bootloader preserved and a recovery path available.
 
 **Status rule:** run #14 supersedes the earlier note above that run #14 was queued and supersedes any implication that artifact contents were not yet independently inspected. Historical run #8 details remain as historical CI history.
+
+
+## IOMMU driver / binding source review — 2026-11-05
+
+Read-only review of the pinned Linux 6.18 source at upstream commit `4765b657625ec5bbda74b44400465fe043802b30`:
+
+- Driver: `target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c`.
+- IOMMU controller DT node is introduced by `target/linux/sunxi/patches-6.18/130-04-arm64-dts-sun55i-dtsi-add-iommu-usbc-pcie-combophy-nodes.patch`.
+- The A5E DTB's `#iommu-cells = <2>` matches the driver's `of_xlate()` handling: cell 0 is stored as `owner->tlbid`; cell 1 is an optional boolean-like `owner->flag`. The driver later uses the flag when enabling/disabling the selected master.
+- The driver bounds the usable master index to 0–6 (`master_id_bitmap` has seven entries). Its A523/A527 platform data labels those entries `ISP`, `CSI`, `VE0`, `VE1`, `G2D`, `DE`, and `DI`; an eighth string is `DEBUG_MODE`, not a normal master index.
+- The source contains older generic comments showing a one-cell example, but the actual A523/A527 DT node and `of_xlate()` implementation use two cells. Do not copy the stale generic example as the binding definition.
+- The current A5E DTS does not attach any client node to the controller. No evidence yet establishes the correct IOMMU master ID for any enabled A5E peripheral. Do not assign IDs to GMAC, PCIe, MMC/SDIO, USB, display, or other devices based on guesses.
+- The driver uses one global `active_domain` for the hardware and switches the global translation-table base in `attach_dev()`. The Linux 6.18 compatibility patch leaves the new per-device `old` callback parameter unused and retains the existing global-domain rollback logic. This is consistent with a minimal API-signature fix, but runtime correctness and multi-client behavior remain untested on hardware.
+
+**Decision:** no IOMMU client DT properties or driver behavior changes are justified by this source review alone. Next evidence needed is a reliable A527/Sun55iw3 master-ID table or vendor DTS showing client-to-master assignments for this exact IP revision, followed by hardware testing with a recoverable test card.
