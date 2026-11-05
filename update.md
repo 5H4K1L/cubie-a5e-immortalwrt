@@ -320,3 +320,26 @@ Read-only review of the pinned Linux 6.18 source at upstream commit `4765b657625
 - The driver uses one global `active_domain` for the hardware and switches the global translation-table base in `attach_dev()`. The Linux 6.18 compatibility patch leaves the new per-device `old` callback parameter unused and retains the existing global-domain rollback logic. This is consistent with a minimal API-signature fix, but runtime correctness and multi-client behavior remain untested on hardware.
 
 **Decision:** no IOMMU client DT properties or driver behavior changes are justified by this source review alone. Next evidence needed is a reliable A527/Sun55iw3 master-ID table or vendor DTS showing client-to-master assignments for this exact IP revision, followed by hardware testing with a recoverable test card.
+
+
+## Full-image inspection workflow added — 2026-11-05
+
+A separate manual-only workflow has been added:
+
+- Workflow: `.github/workflows/full-image-inspection.yml`.
+- Workflow name: **A5E ImmortalWrt full-image inspection (UNTESTED)**.
+- Trigger: `workflow_dispatch` only; it does not automatically run on push.
+- Device profile: `sunxi/cortexa53` / `radxa_cubie-a5e`.
+- Upstream remains pinned to `4765b657625ec5bbda74b44400465fe043802b30`.
+- The existing IOMMU Linux 6.18 callback patch and PCIe MSI-X source assertion are included.
+- It builds the full selected device image, validates gzip integrity, records the partition table, extracts the early boot region after the 8 KiB offset, and uploads the candidate image plus inspection files as `cubie-a5e-UNTESTED-full-image-inspection` (7-day retention).
+
+**Important safety gate:** the upstream sunxi image generator writes a newly built `u-boot-with-spl.bin` at byte offset `0x2000`. The generated image therefore includes a new early boot chain. The user's 1 GB DRAM configuration and exact board DRAM part are not yet validated against the pinned U-Boot/TF-A build. The workflow artifact must not be flashed.
+
+The workflow is manual-only and has not been run from this session; no build result is claimed. It was added in commits:
+- Workflow: `63866f352b0b5ffaa4718d9cd01cae077a6f4801`, then path correction `3bd6f0ac9339ca2c102823a2914f87380f5bb3f3`.
+- Documentation: `069bee2e91c8badd0d6357f55f45c3a5d109b2eb`.
+
+A detailed procedure and no-flash warning are in [docs/FULL-IMAGE-BUILD-INSPECTION.md](docs/FULL-IMAGE-BUILD-INSPECTION.md).
+
+**Outstanding:** inspect the user's uploaded `Immortal-1GB-DRAM-A5E-LuCi-XLR8.img` and `openwrt-1gb-dram.tar.xz`. Container file-processing returned errors, so neither upload has been extracted or committed. The companion OpenWrt repository and its workflows remain untouched.
