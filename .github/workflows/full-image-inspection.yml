@@ -35,6 +35,7 @@ jobs:
       - name: Configure the exact Cubie A5E device profile
         run: |
           set -eu
+          cd immortalwrt
           cat ../build/cubie-a5e-kernel.config >> target/linux/sunxi/cortexa53/config-6.18
           cat > .config <<'EOF'
           CONFIG_TARGET_sunxi=y
@@ -51,7 +52,7 @@ jobs:
           set -eu
           DRIVER="immortalwrt/target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c"
           test -f "$DRIVER"
-          patch --dry-run -d "$(dirname "$DRIVER")" -p1 < ../build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
+          patch --dry-run -d "$(dirname "$DRIVER")" -p1 < build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
           patch -d "$(dirname "$DRIVER")" -p1 < ../build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
           PCIE_DRIVER="immortalwrt/target/linux/sunxi/files/drivers/pci/pcie-sunxi/pcie-sunxi-rc.c"
           test -f "$PCIE_DRIVER"
