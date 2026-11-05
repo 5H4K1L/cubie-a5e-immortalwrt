@@ -76,8 +76,24 @@ jobs:
           test -n "$DTB"
           cp "$IMAGE" output/Image
           cp "$DTB" output/sun55i-a527-cubie-a5e.dtb
-          sha256sum output/*
+          KERNEL_CONFIG="$(find immortalwrt/build_dir -type f -path '*/linux-*/.config' -print -quit)"
+          test -n "$KERNEL_CONFIG"
+          cp "$KERNEL_CONFIG" output/kernel.config
+          KERNEL_VERSION="$(strings output/Image | sed -n 's/^Linux version \\([^ ]*\\).*/\\1/p' | head -n 1)"
+          test -n "$KERNEL_VERSION"
+          {
+            echo "project=ImmortalWrt"
+            echo "project_commit=$(git rev-parse HEAD)"
+            echo "upstream_repository=immortalwrt/immortalwrt"
+            echo "upstream_commit=4765b657625ec5bbda74b44400465fe043802b30"
+            echo "target=sunxi/cortexa53"
+            echo "kernel_version=$KERNEL_VERSION"
+            echo "board_compatible=radxa,cubie-a5e allwinner,sun55i-a527"
+            echo "files:"
+            sha256sum output/Image output/sun55i-a527-cubie-a5e.dtb output/kernel.config
+          } > output/BUILD-MANIFEST.txt
           ls -lh output
+          cat output/BUILD-MANIFEST.txt
 
       - name: Upload kernel validation artifacts
         uses: actions/upload-artifact@v4
