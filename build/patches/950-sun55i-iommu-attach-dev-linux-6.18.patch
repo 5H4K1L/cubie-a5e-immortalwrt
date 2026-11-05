@@ -1,0 +1,19 @@
+From: ChatGPT
+Subject: [PATCH] sunxi: iommu: update sun55i attach_dev callback for Linux 6.18
+
+Linux 6.18 changed iommu_domain_ops.attach_dev() to receive the
+previous domain as a third argument. Keep the driver's existing
+domain-switch and rollback logic, and accept the new callback
+argument without changing its behavior.
+
+--- a/sun55i-iommu.c
++++ b/sun55i-iommu.c
+@@ -1,6 +1,7 @@
+ static int sun55i_iommu_attach_dev(struct iommu_domain *domain,
+-\t\t\t\t   struct device *dev)
++\t\t\t\t   struct device *dev,
++\t\t\t\t   struct iommu_domain *old)
+ {
++\t(void)old;
+ \tstruct sunxi_iommu_domain *sunxi_domain =
+ \t\tcontainer_of(domain, struct sunxi_iommu_domain, domain);
