@@ -131,3 +131,26 @@ Do not flash the current artifact.
 ## Important: not flashable
 
 Neither repository has yet produced a complete, hardware-validated A5E firmware image. Do not flash a raw kernel/DTB artifact. Before any test boot, verify the FIT format, boot script, rootfs, partition layout, load/entry addresses, A5E DTB, root arguments, bootloader compatibility, and recovery plan. Test from a separate microSD card only.
+
+
+## Image-generation pipeline review — 2026-11-05
+
+The pinned ImmortalWrt source has a board profile, but its default SD-card image recipe needs careful review before use:
+
+- `target/linux/sunxi/image/cortexa53.mk` defines `Device/radxa_cubie-a5e`, based on `Device/sun55i-a527`, which inherits the generic sun50i FIT/LZMA kernel flow.
+- `package/boot/uboot-sunxi/Makefile` defines a matching `radxa-cubie-a5e` U-Boot target and depends on `trusted-firmware-a-sunxi-a523`; the source tree also carries A5E-specific U-Boot patches.
+- `target/linux/sunxi/image/Makefile` and `gen_sunxi_sdcard_img.sh` build an MBR SD image, create FAT boot + ext4 root filesystems, and write `u-boot-with-spl.bin` at byte offset `0x2000` (8 × 1024 bytes).
+
+**Important:** the standard generated SD image injects a newly built early boot chain; it is not a kernel/rootfs-only update and may replace the Boot0/SPL/TF-A/U-Boot bytes on the card. Do not build/flash/use it as a drop-in replacement until the new DRAM configuration and bootloader are verified against the exact 1 GB board revision and a recovery path exists.
+
+The earlier read-only comparison of the two owner-supplied images found bytes from `0x2000` through `0x100000` identical, with Allwinner Boot0/SPL, BL31 and U-Boot-related signatures in that region. This is consistent with both images carrying the same early boot payload at the location used by the generic image script, but exact component boundaries and the active boot source (SD vs SPI) remain unconfirmed.
+
+### Required decision before full image generation
+
+1. Establish whether the working board loads early stages from microSD, SPI, or a combination.
+2. Extract and fingerprint the known-working early boot payload from the original image if it is stored on the SD card.
+3. Compare the newly built A5E U-Boot/TF-A/DRAM configuration with the known-working payload; do not silently substitute it.
+4. Plan a safe image variant that reuses the verified bootloader payload unchanged, or omits bootloader writes only if an independent known-good SPI boot chain is proven.
+5. Keep the existing FIT/LZMA `uImage`, `bootm` boot path and root PARTUUID behavior unless a deliberate replacement is validated.
+
+The generic `KERNEL_LOADADDR:=0x40080000` in `cortexa53.mk` is a build default, not evidence of the numeric load/entry addresses in the owner's working FIT. Do not use it as a substitute for extracting the actual FIT metadata.
