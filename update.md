@@ -343,3 +343,6 @@ The workflow is manual-only and has not been run from this session; no build res
 A detailed procedure and no-flash warning are in [docs/FULL-IMAGE-BUILD-INSPECTION.md](docs/FULL-IMAGE-BUILD-INSPECTION.md).
 
 **Outstanding:** inspect the user's uploaded `Immortal-1GB-DRAM-A5E-LuCi-XLR8.img` and `openwrt-1gb-dram.tar.xz`. Container file-processing returned errors, so neither upload has been extracted or committed. The companion OpenWrt repository and its workflows remain untouched.
+
+
+Workflow review correction: after rereading the committed YAML, the build and patch steps' working directories were corrected in commit `ec03a8661a8cff0fbc2021c33c0566c1eae916a0`. The workflow remains manual-only. It has not been dispatched or run; no full-image build result is claimed.
