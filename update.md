@@ -233,3 +233,12 @@ A separate review has been committed at [docs/EXTERNAL-REPOSITORY-REVIEW.md](doc
 **Latest CI status at handoff:** workflow run [#10](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42012445649), commit `161d6d04af912002ba28476e09d1eff7f4fc1969`, was still `in_progress` when checked. IOMMU patch application passed; host tools/toolchain was still running; kernel compile had not started. Earlier run [#8](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41994608070) is the last confirmed successful kernel validation.
 
 **Next:** wait for run #10, inspect its logs/artifacts, then add explicit CI assertions for `CONFIG_IOMMU_SUPPORT=y` and `CONFIG_SUN55I_IOMMU=y` and re-check the generated DTB's IOMMU client phandles. Do not import the external Wi-Fi or DRAM changes yet.
+
+
+## CI guard update — 2026-11-05
+
+The project kernel config fragment now explicitly requests `CONFIG_IOMMU_SUPPORT=y` and `CONFIG_SUN55I_IOMMU=y`. The validation workflow now checks those settings and checks that the pinned Sun55i PCIe RC driver advertises `MSI_FLAG_PCI_MSIX` (already present upstream in this pinned tree). It also runs `git diff --check` after applying the IOMMU callback patch.
+
+The first workflow-file edit was malformed and produced run [#13](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42017995765), which failed before creating a job. The workflow file was then rewritten and re-read to verify its complete YAML content. The corrected workflow is commit `7b45384289f41c39e4d8c10de5f51ddb170d5b22`; validation run [#14](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42018099723) was queued when last checked. Older runs #10–#12 were already in progress and are not evidence for the new assertions.
+
+Do not treat the new assertions as passed until run #14 reaches the relevant steps. No external Wi-Fi, PCIe, or DRAM patch was copied into the kernel tree.
