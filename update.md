@@ -2,29 +2,30 @@
 
 **Last reviewed:** 2026-11-05 (UTC)  
 **Board:** Radxa Cubie A5E V1.20, Allwinner A527 / sun55i, 1 GB RAM  
+**Default branch:** `main`  
 **Related project:** [OpenWrt companion repository](https://github.com/5H4K1L/cubie-a5e-openwrt)
 
-> Start here when resuming. Highest-priority active task: resolve the Linux 6.18 Sun55i IOMMU callback mismatch and obtain a passing kernel/DTB validation run. This repository currently validates kernel/device-tree compilation only; it does not yet create a complete firmware image.
+> Start here when resuming. The Linux 6.18 Sun55i IOMMU callback compile blocker has been corrected, and the latest ImmortalWrt kernel-validation workflow (#8) passed through kernel compilation, DTB collection, and artifact upload. The project has not yet built a complete firmware image.
 
 ## Goal and safety constraints
 
-Validate and develop ImmortalWrt support for the Radxa Cubie A5E 1 GB board, ultimately producing a reproducible, board-specific microSD image.
+Develop reproducible ImmortalWrt support for the Radxa Cubie A5E 1 GB board, ultimately producing a board-specific microSD image.
 
 - Preserve the working ImmortalWrt microSD and original image files.
 - Do not write SPI, Boot0/SPL, TF-A, U-Boot, or DRAM timing data.
-- Do not apply 2 GB/4 GB DRAM settings to this 1 GB board.
+- Never apply 2 GB/4 GB DRAM settings to this 1 GB board.
 - Do not flash current CI artifacts: they are kernel/DTB validation outputs, not firmware.
-- Treat all undocumented boot offsets, DRAM clocks/geometry, and FIT load/entry addresses as unknown until verified.
+- Treat undocumented boot offsets, DRAM clocks/geometry, memory ranges, and FIT load/entry addresses as unknown until verified.
 
-## Hardware / baseline
+## Hardware / working baseline
 
 - Board: Radxa Cubie A5E V1.20; SoC Allwinner A527.
-- Device tree compatible strings: `radxa,cubie-a5e` and `allwinner,sun55i-a527`.
-- RAM: 1 GB (user-confirmed); eight Cortex-A55 cores.
-- Current working installation: ImmortalWrt sunxi/cortexa53, Linux 6.18.34 AArch64.
+- Compatible strings: `radxa,cubie-a5e`, `allwinner,sun55i-a527`.
+- RAM: 1 GB (owner-confirmed); eight Cortex-A55 cores.
+- Working installation: ImmortalWrt `sunxi/cortexa53`, Linux 6.18.34 AArch64.
 - Boot partition: FAT `/dev/mmcblk0p1` (20 MB); root: ext4 `/dev/mmcblk0p2`.
 - U-Boot version string: `2026.01_armbian-2026.01-S127a-Pd40e-Hc6a9-V2b7c-Bd0d2-R448a`.
-- Working boot script loads FAT uImage, obtains root PARTUUID with `part uuid`, and invokes `bootm`.
+- Working boot script loads FAT `uImage`, obtains root PARTUUID with `part uuid`, and invokes `bootm`.
 - Working FIT uses `config-1`, LZMA kernel and uncompressed A5E DTB. Numeric load/entry addresses remain unknown.
 
 ## Source and current workflow
@@ -32,18 +33,18 @@ Validate and develop ImmortalWrt support for the Radxa Cubie A5E 1 GB board, ult
 - Repository: [5H4K1L/cubie-a5e-immortalwrt](https://github.com/5H4K1L/cubie-a5e-immortalwrt), default branch `main`.
 - Workflow: `.github/workflows/kernel-validation.yml`.
 - Pinned upstream: `immortalwrt/immortalwrt` commit `4765b657625ec5bbda74b44400465fe043802b30`.
-- Target: `sunxi/cortexa53`; kernel source built by CI is Linux 6.18.60.
+- Target: `sunxi/cortexa53`; CI kernel source version: Linux 6.18.60.
 - Kernel config fragment: `build/cubie-a5e-kernel.config`.
-- Workflow appends the fragment to `target/linux/sunxi/cortexa53/config-6.18`, runs `make defconfig`, builds host tools/toolchain, then `make -j2 target/linux/compile V=s`.
-- IOMMU compatibility patch: `build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch`.
-- Intended successful artifact: Linux `Image` and `sun55i-a527-cubie-a5e.dtb`, uploaded as `cubie-a5e-kernel-validation`.
+- IOMMU patch: `build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch`.
+- Workflow applies the patch to the checked-out source, builds host tools/toolchain, compiles `target/linux`, then collects the raw kernel `Image` and `sun55i-a527-cubie-a5e.dtb`.
 
-## IOMMU issue: root cause and intended correction
+## IOMMU compile blocker — resolved for compilation
 
-The original kernel compilation error was:
+### Original error
+
+The first build failed because `sun55i_iommu_attach_dev()` had the old two-argument callback signature while the Linux 6.18 `iommu_domain_ops.attach_dev` function pointer expected three arguments:
 
 ```text
-drivers/iommu/sun55i-iommu.c:1492:43: error:
 initialization of 'int (*)(struct iommu_domain *, struct device *,
 struct iommu_domain *)'
 from incompatible pointer type
@@ -51,17 +52,13 @@ from incompatible pointer type
 [-Wincompatible-pointer-types]
 ```
 
-The pinned ImmortalWrt source contains the driver at:
-`target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c`.
+### Correction now in the repository
 
-Its callback currently starts as:
+The pinned source's driver is located at:
 
-```c
-static int sun55i_iommu_attach_dev(struct iommu_domain *domain,
-                                   struct device *dev)
-```
+`target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c`
 
-Linux 6.18 changed `iommu_domain_ops.attach_dev` to accept the previous domain as a third argument. The callback must therefore accept:
+The compatibility patch changes the callback to:
 
 ```c
 static int sun55i_iommu_attach_dev(struct iommu_domain *domain,
@@ -69,83 +66,68 @@ static int sun55i_iommu_attach_dev(struct iommu_domain *domain,
                                    struct iommu_domain *old)
 ```
 
-The existing driver tracks its prior hardware domain through `active_domain` while holding `domain_lock`, and uses that state for rollback if hardware initialization fails. The minimal compatibility patch preserves that existing logic and explicitly marks the new `old` parameter unused. Do not cast the callback pointer, disable IOMMU, or discard the existing rollback logic without a reasoned driver-level redesign.
+and marks `old` unused with `(void)old;`. The driver already serializes domain changes with `domain_lock`, tracks its hardware domain in `active_domain`, and uses that state to restore the previous translation-table base if hardware initialization fails. The patch preserves that existing logic; it does not cast the function pointer or disable IOMMU.
 
-Upstream API-change references:
-- [Linux IOMMU attach_dev old-domain change](https://lore-kernel.gnuweeb.org/all/20261013112930.896254953%40linuxfoundation.org/)
-- [Patch discussion and API rationale](https://lists.openwall.net/linux-kernel/2025/10/13/1)
+The workflow's explicit patch-application step now succeeds against the pinned source, and the subsequent Linux target compilation succeeds. This confirms the callback type mismatch no longer blocks this pinned Linux 6.18.60 build.
 
-## CI history / errors observed (2026-11-05)
+**Runtime caveat:** compilation does not prove that the driver's domain-switching behavior is correct at runtime on A527 hardware. The new `old` API argument is intentionally unused because this driver's existing `active_domain` state is used for rollback. Runtime IOMMU behavior still needs hardware testing if the device tree enables this IOMMU/client path.
 
-### Run #1 — original kernel failure
+## CI history — 2026-11-05
 
-[Workflow run #1](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41977839204)
+| Run | Commit / branch | Result | Finding |
+|---|---|---|---|
+| [#1](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41977839204) | `07f36a04`, main | Failure | Original attach_dev callback type mismatch |
+| [#2](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41977944553) | `07f36a04`, main | Failure | Original validation attempt also failed |
+| [#3](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41989178917) | `871b72cc`, fix branch | Failure | Patch hunk did not match source |
+| [#4](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41989205076) | `d5dc11b2`, fix branch | Failure | Intermediate patch attempt |
+| [#5](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41989214709) | `354c3e20`, fix branch | Success | Kernel validation passed on fix branch |
+| [#6](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41993789031) | `0549f011`, main | Failure | Intermediate callback patch attempt |
+| [#7](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41993795193) | `7320be21`, main | Failure | Malformed patch: hunk line count / tab formatting |
+| **[#8](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41994608070)** | **`181496d1`, main** | **Success** | **Corrected patch, kernel compile, DTB collection, artifact upload all passed** |
 
-- Checkout, dependency installation, A5E configuration, host tools, and ARM64 toolchain all completed successfully.
-- Kernel compilation failed at `drivers/iommu/sun55i-iommu.c:1492` with the callback type mismatch shown above.
-- Build then failed in `drivers/iommu/sun55i-iommu.o`, propagating to `target/linux/compile`.
-- Run #2 was a repeat of the same initial workflow revision and also failed; no distinct root cause was established for it.
-- Some GCC/toolchain make messages in the log are marked `Error 1 (ignored)`; they were not the terminal build failure. The concrete fatal blocker was the IOMMU callback type mismatch.
+### Latest successful run #8
 
-### Run #3 — first patch application attempt
+- Run ID: `41994608070`.
+- Commit: `181496d13895d517a8bc13abbd85c62eeafc74ea`.
+- Branch: `main`.
+- Result: completed / success.
+- Patch step: passed.
+- Host tools and ARM64 toolchain: passed.
+- Linux target compilation: passed.
+- Kernel and A5E DTB collection: passed.
+- Artifact upload: passed.
+- Artifact: `cubie-a5e-kernel-validation`, available and not expired when checked.
+- GitHub-reported artifact archive size: 7,021,334 bytes.
 
-[Workflow run #3](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41989178917)
+The artifact contains the raw kernel `Image` and `sun55i-a527-cubie-a5e.dtb` collected by the workflow. No artifact contents or SHA-256 values have yet been independently inspected outside CI.
 
-- Configuration completed.
-- Patch application failed: `Hunk #1 FAILED at 759`.
-- `1 out of 1 hunk FAILED -- saving rejects to file target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c.rej`.
-- Cause: patch context/whitespace did not match the exact source text.
+## What this result proves — and does not prove
 
-### Runs #4 and #5 — intermediate patch attempts
+It proves the corrected patch applies to the pinned ImmortalWrt source and that the Linux target compiles far enough for CI to collect and upload the expected kernel and DTB.
 
-- [Run #4](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41989205076): patch-application step passed at the time it was inspected; full kernel result was not yet confirmed in the retrieved status.
-- [Run #5](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41989214709): patch-application step passed at the time it was inspected; full kernel result was not yet confirmed in the retrieved status.
-- Do not treat either as a successful kernel build without checking the final workflow conclusion.
+It does **not** prove:
+- that the kernel boots on the physical A5E;
+- that the IOMMU driver is functionally correct at runtime;
+- that the generated DTB has the correct memory map after bootloader fixups;
+- that a complete FIT, boot script, root filesystem, partitioned disk image, or flashable firmware has been produced;
+- that Ethernet, storage, USB, Wi-Fi, thermal, reboot, or other peripherals work.
 
-### Run #6 — later patch attempt
+Do not flash the current artifact.
 
-[Workflow run #6](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41993789031)
+## Next steps — in order
 
-- Patch-application step was reported successful in the latest inspected job snapshot.
-- Full build status had not yet been confirmed at that snapshot.
+1. Download the #8 `cubie-a5e-kernel-validation` artifact and inspect the kernel `Image` and A5E DTB. Record sizes, kernel version/config, DTB compatible strings, and SHA-256.
+2. Compare the generated DTB against the known-working FIT's embedded DTB and inspect the runtime FDT/memory fixups. Do not invent memory nodes or RAM ranges.
+3. Review the complete patch against the pinned driver's full callback implementation and Linux 6.18 API. Keep the minimal patch unless a semantic issue is demonstrated.
+4. Compare the ImmortalWrt kernel/DTB/config with the successful OpenWrt validation artifact. Do not assume the two source trees are identical.
+5. Inspect ImmortalWrt's sunxi image-generation pipeline and plan a board-specific FIT/rootfs/partition recipe matching the observed `bootm` flow.
+6. Build a complete image in CI, inspect its partition table, boot files, FIT metadata, rootfs, PARTUUID behavior, and checksums.
+7. Test only from a separate microSD card after static review. Keep the known-working card and SPI bootloader untouched.
 
-### Run #7 — malformed patch file
+## Companion OpenWrt status
 
-[Workflow run #7](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/41993795193)
-
-- Checkout, dependency installation, and A5E configuration succeeded.
-- Patch step failed before compilation with:
-  `patch: **** malformed patch at line 19`.
-- The committed patch was malformed: its hunk line counts did not match the body, and the tab indentation had been written as literal backslash-t text in the patch.
-- Host tools, toolchain, kernel compile, artifact collection, and upload were skipped because patch application failed.
-
-## Latest correction applied
-
-The patch file was corrected on `main` in commit:
-
-`181496d13895d517a8bc13abbd85c62eeafc74ea`
-
-Changes:
-- Replaced the malformed hunk with a correctly counted unified diff.
-- Used actual tab characters in the patch context.
-- Updated the callback to accept `struct iommu_domain *old`.
-- Added `(void)old;` after the local declarations, preserving the existing active-domain/rollback implementation and avoiding a declaration-after-statement style issue.
-- The corrected patch was dry-run tested against a local fixture containing the exact source function prefix: `patch --dry-run -p1` passed and the patch applied successfully.
-
-**Important:** this local fixture test is not a substitute for applying the patch to the complete pinned upstream source in CI. The next required verification is a new GitHub Actions run: confirm the patch step passes, host tools/toolchain pass, and the Linux target compiles through DTB collection. Record the resulting run URL and any new first fatal error here.
-
-## Next steps
-
-1. Check the new workflow run triggered by commit `181496d13895d517a8bc13abbd85c62eeafc74ea`.
-2. If the patch step fails, inspect the exact patch error and source context before changing the patch again.
-3. If patch application passes, inspect the complete kernel build log for the next fatal compiler/linker error. Do not assume the IOMMU issue is solved until the kernel compile step succeeds.
-4. After successful kernel compilation, verify that both `Image` and `sun55i-a527-cubie-a5e.dtb` are collected and checksummed.
-5. Continue full-image and boot-chain research only after kernel/DTB validation passes.
-
-## Working OpenWrt comparison
-
-The companion OpenWrt repository is [cubie-a5e-openwrt](https://github.com/5H4K1L/cubie-a5e-openwrt). Its previously observed kernel-validation run #3 passed kernel compilation and artifact collection on branch `build/initial-a5e-workflow`, with pinned source revision `b455c5b8514f2a6de0e3c68276771f953bddb046`. Compare its kernel configuration and source patches when useful, but do not assume OpenWrt and ImmortalWrt have identical IOMMU APIs or patch stacks.
+[OpenWrt companion repository](https://github.com/5H4K1L/cubie-a5e-openwrt) passed kernel validation in [run #3](https://github.com/5H4K1L/cubie-a5e-openwrt/actions/runs/41975643597), branch `build/initial-a5e-workflow`, commit `ce996798ae6db98c8899c2958cdb8dcbbbe5d6be`. Its artifact is also kernel/DTB only, not a complete image.
 
 ## Important: not flashable
 
-Neither the successful OpenWrt validation artifact nor a future ImmortalWrt kernel/DTB artifact is a complete image. Do not flash until the FIT, boot script, rootfs, partition layout, kernel load/entry addresses, A5E DTB, root arguments, and bootloader compatibility are verified on a separate microSD card.
+Neither repository has yet produced a complete, hardware-validated A5E firmware image. Do not flash a raw kernel/DTB artifact. Before any test boot, verify the FIT format, boot script, rootfs, partition layout, load/entry addresses, A5E DTB, root arguments, bootloader compatibility, and recovery plan. Test from a separate microSD card only.
