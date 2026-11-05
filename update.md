@@ -154,3 +154,34 @@ The earlier read-only comparison of the two owner-supplied images found bytes fr
 5. Keep the existing FIT/LZMA `uImage`, `bootm` boot path and root PARTUUID behavior unless a deliberate replacement is validated.
 
 The generic `KERNEL_LOADADDR:=0x40080000` in `cortexa53.mk` is a build default, not evidence of the numeric load/entry addresses in the owner's working FIT. Do not use it as a substitute for extracting the actual FIT metadata.
+ 
+
+## Binary artifact inspection and DTB comparison — 2026-11-05
+
+Both successful workflow artifacts were downloaded and inspected locally (ZIP contents, file type, kernel version string, DTB structure, and SHA-256).
+
+| Artifact file | OpenWrt | ImmortalWrt |
+|---|---:|---:|
+| Kernel `Image` | 14,764,040 bytes | 15,501,320 bytes |
+| Kernel version | 6.18.60 | 6.18.60 |
+| Kernel SHA-256 | `0ad0d789f4cdd1c66be70a00b17f1fb5301e5e76afef801a31667a52058127e9` | `5bdd944d7acb3e83bad2f92e3d6232389d4c6b542251dd94897c3d57166c202e` |
+| A5E DTB | 16,938 bytes | 30,722 bytes |
+| DTB SHA-256 | `623f0efb2e74daea4bc69413699e66e001e964afcf36412014760d60da5b9d20` | `c27efbf42f23f50fccf9202f772de312b170d86a1601a82ba16553a11a702cf6` |
+| FDT node count | 99 | 188 |
+
+Both DTBs report model `Radxa Cubie A5E`, compatibles `radxa,cubie-a5e` and `allwinner,sun55i-a527`, and eight Cortex-A55 CPU nodes. Neither has explicit `/memory` or `/reserved-memory` nodes; bootloader/runtime FDT fixups must be understood before packaging.
+
+The ImmortalWrt DTB contains materially more A5E board support than the OpenWrt DTB:
+- IOMMU controller node `/iommu@2010000` (no `iommus` client properties were found in this DTB; node presence alone does not prove active client attachment).
+- Second GMAC200 controller `/soc/ethernet@4510000`, enabled with `status = "okay"`.
+- PCIe root complex and INNO combo PHY, enabled.
+- SDIO Wi-Fi child node under `/soc/mmc@4021000`.
+- CPU OPP tables, CPU/DDR/GPU thermal zones, regulator and power-domain nodes, DMA controllers, SPI/I2S/SPDIF and other A523/A527 board improvements.
+- The OpenWrt DTB currently contains only the first Ethernet controller and lacks these additional nodes.
+
+The principal ImmortalWrt kernel patch series responsible includes:
+`030-01` GMAC200 node; `030-02` DMA nodes; `031-01` A5E second Ethernet enablement; `121-*` A523 clock/cpufreq fixes; `123-*` A523 thermal support; `124` Sun55i IOMMU driver; `125` INNO PCIe/USB3 combo PHY; `126` Sun55i PCIe support; `130-*` A523/A527 thermal, regulator, cpufreq and SoC DTS nodes; `131-*` A5E Wi-Fi/BT/PCIe/USB-C board improvements; plus supporting SPI/ASoC/PHY patches.
+
+**Interpretation:** both kernels compile, but their hardware enablement is not equivalent. ImmortalWrt is the better current A5E feature baseline. Porting its relevant kernel patch series into the OpenWrt branch should be a separate, staged change with patch-application and kernel CI validation; do not copy the DTB binary itself or assume every ImmortalWrt patch is safe to transplant without checking dependencies.
+
+The workflow artifacts contain only `Image` and DTB. They do not include the final kernel `.config`, preprocessed DTS, or full build log; future validation runs should consider uploading a kernel config and build manifest alongside the binary outputs.
