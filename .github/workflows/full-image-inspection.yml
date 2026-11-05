@@ -49,14 +49,14 @@ jobs:
       - name: Apply Linux 6.18 sun55i IOMMU callback compatibility fix
         run: |
           set -eu
-          DRIVER="target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c"
+          DRIVER="immortalwrt/target/linux/sunxi/files/drivers/iommu/sun55i-iommu.c"
           test -f "$DRIVER"
           patch --dry-run -d "$(dirname "$DRIVER")" -p1 < ../build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
           patch -d "$(dirname "$DRIVER")" -p1 < ../build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch
-          PCIE_DRIVER="target/linux/sunxi/files/drivers/pci/pcie-sunxi/pcie-sunxi-rc.c"
+          PCIE_DRIVER="immortalwrt/target/linux/sunxi/files/drivers/pci/pcie-sunxi/pcie-sunxi-rc.c"
           test -f "$PCIE_DRIVER"
           grep -q 'MSI_FLAG_PCI_MSIX' "$PCIE_DRIVER"
-          git diff --check
+          git -C immortalwrt diff --check
 
       - name: Build complete device image (CI inspection only)
         run: |
