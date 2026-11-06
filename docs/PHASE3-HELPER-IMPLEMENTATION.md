@@ -63,3 +63,8 @@ A static review caught over-escaped byte literals in the expanded MBR tests; the
 - The actual reference binary has not yet been used in a helper assembly fixture in the local runtime. Do not treat the generated-payload fixture as actual-binary validation.
 - Existing firmware/kernel workflows were not modified or dispatched. No firmware image was built, flashed, or written to hardware.
 - Next gate: establish the CI failure cause before any rerun or expansion to a CI integration fixture using the `reference-files` branch binary.
+
+
+### CI job-start evidence
+
+The failed run's only job reports `runner_id=0`, no runner name, and an empty steps array; it completed within three seconds. The job did not reach checkout, Python setup, or tests. The failure therefore appears to occur before step execution; the exact GitHub-side cause is unavailable. No retry was made.
