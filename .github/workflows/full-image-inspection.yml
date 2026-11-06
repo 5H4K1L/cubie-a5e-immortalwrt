@@ -21,10 +21,24 @@ jobs:
           ref: 4765b657625ec5bbda74b44400465fe043802b30
           path: immortalwrt
 
+      - name: Reclaim runner disk space for full firmware build
+        run: |
+          set -eu
+          # Remove large preinstalled SDKs and caches not used by this build.
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/share/swift /usr/local/.ghcup
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          if command -v docker >/dev/null 2>&1; then
+            sudo docker system prune --all --force --volumes || true
+          fi
+          echo "Disk space after cleanup:"
+          df -h "$GITHUB_WORKSPACE"
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev python3 python3-setuptools rsync swig unzip zlib1g-dev file wget libelf-dev libzstd-dev device-tree-compiler dosfstools mtools util-linux
+          sudo apt-get clean
 
       - name: Prepare package feeds
         run: |
