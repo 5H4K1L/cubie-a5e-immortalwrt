@@ -634,3 +634,12 @@ Do not treat a filename, report, or copied checksum as binary verification. When
 
 - A review of the newly added tests caught over-escaped byte literals in the synthetic MBR fixture. Corrected the literals so the fixture writes the actual MBR signature bytes `55 aa` and the invalid-signature case writes `00 00`.
 - The correction is committed on this branch. The expanded 11-test suite remains unexecuted; do not report it as passing until it is run against the committed branch files.
+
+
+### Phase 3 validation — 2026-11-06
+
+- Reconstructed the exact committed helper and 11-test suite from the branch files in an isolated local test directory; `python3 -m py_compile` passed and all **11/11 unit tests passed**.
+- Ran an additional sparse 324 MiB disposable image fixture using the documented MBR layout (partition 1 at LBA 2048; partition 2 at LBA 45056) and a generated test payload of the production size (896,329 bytes). The helper correctly found the first partition at byte 1,048,576, placed the payload through byte 904,520 (exclusive end 904,521), verified read-back, preserved the source, and confirmed all bytes outside the replacement range were unchanged.
+- Important limitation: the additional fixture used a generated payload with the correct length, **not** the actual approved U-Boot/SPL binary. The actual reference binary's size and SHA-256 were previously verified, but it has not yet been exercised in the assembly helper in this runtime.
+- No CI workflow changes or workflow runs. No real firmware output, flash, or hardware write.
+- Next: obtain the exact reference binary in the local validation environment and run the same disposable-image assembly with its pinned SHA-256; then review CI test integration. Do not treat this as boot/runtime validation or flash approval.
