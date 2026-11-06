@@ -236,3 +236,6 @@ The initial local validation recorded 9 tests passing against an equivalent impl
 - Actual reference binary assembly remains pending in the local runtime. The pinned binary is on branch `reference-files`; an option for a CI integration fixture is to fetch that branch in the test workflow, verify size/SHA-256, create a disposable MBR image, and run the helper against the actual binary. Do not add this integration step until the failed-run cause is understood.
 - No changes to the full-image or kernel build workflows; no firmware build, merge, flash, or hardware write.
 - Continue updating `update.md` and this handover when project state changes. Work only in `5H4K1L/cubie-a5e-immortalwrt`.
+
+
+**Additional CI metadata:** the sole job in run `42208328230` has `runner_id=0`, an empty runner name, and no steps; it started and completed within three seconds. It never reached the Python commands. The exact platform-side cause remains unknown. Do not treat this as a test assertion failure and do not rerun/dispatch without authorization.
