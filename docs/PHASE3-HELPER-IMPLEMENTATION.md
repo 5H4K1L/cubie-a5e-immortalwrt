@@ -37,3 +37,8 @@ Branch: `feature/bootloader-preservation-helper`
 - The helper does not prove DRAM compatibility, SPL runtime behavior, kernel/DTB compatibility or root filesystem correctness.
 - The generated file is explicitly marked `UNTESTED — DO NOT FLASH`.
 - No automatic hardware-flashing step is appropriate.
+
+
+### Test fixture review note
+
+A static review caught over-escaped byte literals in the expanded MBR tests; these were corrected so the synthetic fixture uses actual `55 aa` MBR signature bytes and `00 00` for the invalid-signature case. The 11-test suite remains pending execution against the committed branch files.
