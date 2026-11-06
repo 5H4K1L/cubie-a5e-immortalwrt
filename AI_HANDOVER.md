@@ -197,3 +197,20 @@ Any resulting image remains **UNTESTED / DO NOT FLASH** until the embedded boot 
 - Phase 2 design: preserve the integrated reference U-Boot/SPL as a single unit in a separate post-build output; validate hash/size, parse MBR for actual first-partition boundary, reject overlap, verify readback, and confirm all other image bytes remain unchanged. Keep the generated kernel FIT and rootfs from the same build; do not blindly reuse old uImage/BOOT.SCR.
 - Detailed review: [docs/BOOTCHAIN-PHASE1-2-REVIEW.md](docs/BOOTCHAIN-PHASE1-2-REVIEW.md). Preservation plan updated: [docs/BOOTLOADER-PRESERVATION-PLAN.md](docs/BOOTLOADER-PRESERVATION-PLAN.md).
 - No workflow files changed or workflows dispatched. No image or hardware was modified. Next step: implement and unit-test a standalone host-side assembly helper before wiring it into CI.
+
+
+## 13. Phase 3 — bootloader-preservation helper (2026-11-06)
+
+Active work branch: `feature/bootloader-preservation-helper` (not merged to `main`).
+
+Files:
+- `scripts/preserve_bootloader.py` — host-side candidate assembler.
+- `tests/test_preserve_bootloader.py` — synthetic MBR/image tests.
+- `tools/bootloader-preservation/README.md` — usage and safety notes.
+- `docs/PHASE3-HELPER-IMPLEMENTATION.md` — implementation and validation record.
+
+The helper requires the approved U-Boot/SPL binary (896,329 bytes; SHA-256 `2cc42f955c5d0c5042b307ff67b646aa8d49740e2b0680a411506738b03e73eb`), parses the MBR to find the earliest partition, checks that the replacement at byte offset `0x2000` ends before that partition, writes to a separate temporary copy, verifies readback and all bytes outside the replacement range, and refuses to overwrite an existing output. It emits `UNTESTED — DO NOT FLASH`.
+
+The initial local validation recorded 9 tests passing against an equivalent implementation. Two more tests were added for an invalid partition boot flag and output equal to the source image; the expanded 11-test suite has not yet been run against the exact branch files. A disposable full-layout image using the real reference binary has not yet been assembled.
+
+**Do not dispatch or restart any workflow, merge the branch, or flash an image without explicit user authorization.** No workflow files changed or dispatched during this phase. Continue updating `update.md` and this handover whenever project work changes. Work only in `5H4K1L/cubie-a5e-immortalwrt`; the companion OpenWrt repository is out of scope.
