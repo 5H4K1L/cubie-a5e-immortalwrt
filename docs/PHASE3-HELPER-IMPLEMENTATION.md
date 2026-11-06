@@ -68,3 +68,8 @@ A static review caught over-escaped byte literals in the expanded MBR tests; the
 ### CI job-start evidence
 
 The failed run's only job reports `runner_id=0`, no runner name, and an empty steps array; it completed within three seconds. The job did not reach checkout, Python setup, or tests. The failure therefore appears to occur before step execution; the exact GitHub-side cause is unavailable. No retry was made.
+
+
+### GitHub Actions account limit confirmed — 2026-11-06
+
+The user confirmed that the GitHub job-start message corresponds to exhaustion of the account's included 2,000 Actions minutes. GitHub therefore blocked run 42208328230 before runner allocation and before any workflow step. This is an account usage/billing restriction, not a helper or test failure; the run supplies no CI test verdict. Do not increase spending or enable paid usage unless the user chooses. No rerun has been started; retry only after the user confirms the restriction is resolved and authorizes a retry. Local py_compile and 11/11 unit tests passed independently. Actual reference-binary assembly remains outstanding. No firmware build, image assembly, flash, or hardware write occurred.
