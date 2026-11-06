@@ -359,3 +359,59 @@ Workflow review correction: after rereading the committed YAML, the build and pa
 - The image build, image inspection and artifact upload were skipped in the failed run; no image was produced by that run.
 - The Kconfig resolver printed recursive-dependency diagnostics for unrelated video/Qt5, fwknop and squeezelite feed symbols, but `make defconfig` completed and the target plus IOMMU configuration assertions passed. These warnings were not the fatal exit.
 - Next validation: rerun the full-image inspection workflow. Even if CI succeeds, the generated image remains inspection-only and must not be flashed until its embedded U-Boot/SPL is compared with the known-working 1 GB boot chain.
+
+
+---
+
+## 2026-11-06 — Full-image inspection failure diagnosis and handoff update
+
+**Scope confirmation:** this work was limited to `5H4K1L/cubie-a5e-immortalwrt`. No files were edited and no workflows were dispatched in `5H4K1L/cubie-a5e-openwrt`.
+
+### Failed run inspected
+
+- Workflow: `.github/workflows/full-image-inspection.yml`
+- Run: [full-image inspection #1](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42043736363)
+- Run ID: `42043736363`
+- Job: `image-inspection`
+- Result: `failure`
+- Failed step: `Apply Linux 6.18 sun55i IOMMU callback compatibility fix`
+- Configuration step completed successfully. The target profile, `CONFIG_IOMMU_SUPPORT=y`, `CONFIG_SUN55I_IOMMU=y`, and selected package assertions passed.
+- The IOMMU patch dry-run succeeded.
+- The actual patch command failed because it referenced `../build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch` while the shell was still at the workspace root. The file is at `build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch`.
+- Exact shell error: `../build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch: No such file or directory`.
+- The image build, image inspection and artifact upload were skipped. **This failed run produced no firmware image.**
+- Kconfig printed recursive-dependency diagnostics for unrelated video/Qt5, fwknop and squeezelite feed symbols. `make defconfig` nevertheless completed and the explicit target/IOMMU assertions passed; these diagnostics were not the fatal error.
+
+### Correction committed
+
+- Fix commit: [`9d6957cf0becb4f19b19a74bdb4484e996242bd3`](https://github.com/5H4K1L/cubie-a5e-immortalwrt/commit/9d6957cf0becb4f19b19a74bdb4484e996242bd3) — corrected the actual patch invocation to use the same repository-root-relative path as the successful dry-run.
+- Follow-up documentation commit: [`ac81268307d21db160a8f28dca78abe27f88d8ad`](https://github.com/5H4K1L/cubie-a5e-immortalwrt/commit/ac81268307d21db160a8f28dca78abe27f88d8ad).
+- The current committed workflow YAML was fetched and inspected. Both patch commands now use `build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch`.
+- **Important validation distinction:** the corrected YAML has been inspected, but no successful rerun of the full-image workflow has yet been confirmed. Do not describe the full-image build as fixed/validated until a new run passes the patch step and completes.
+
+### Restart status and next action
+
+At the time of this update, the available GitHub connection did not expose a workflow-dispatch action. No new run was started, and the old failed run was not rerun because it is tied to the old commit.
+
+Manually start the corrected workflow from its default `main` branch:
+
+[Open A5E ImmortalWrt full-image inspection workflow](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/workflows/full-image-inspection.yml)
+
+Choose **Run workflow → main → Run workflow**. Then inspect the new run from the beginning, especially:
+1. Configure exact Cubie A5E profile and verify target/IOMMU symbols.
+2. Confirm IOMMU patch dry-run and actual application both pass.
+3. Build complete image.
+4. Inspect image gzip integrity, partition table, early boot region and candidate U-Boot/SPL.
+5. Confirm artifact upload and review every manifest warning.
+
+### Non-negotiable image safety gate
+
+A successful CI build is not proof of hardware bootability. The standard sunxi SD image recipe writes a newly built `u-boot-with-spl.bin` at byte offset `0x2000`. The exact 1 GB DRAM part/timing and new early boot chain have not been approved for this board. Treat all resulting files as inspection-only and **DO NOT FLASH** until the embedded boot chain is compared with the known-working 1 GB payload, the active SD/SPI boot path is established, and a recovery plan exists. Preserve the working card and SPI contents.
+
+### State summary
+
+- Kernel-validation run #14 remains the confirmed successful kernel/DTB validation baseline; it is not a complete firmware image.
+- Full-image inspection run #1 failed on a workflow path typo before image build.
+- The path typo has been corrected and committed, but rerun is still pending.
+- Do not add guessed IOMMU client `iommus` properties, unverified Wi-Fi power sequencing, or unverified DRAM timing changes.
+- Continue work in this ImmortalWrt repository only unless the user explicitly changes scope.
