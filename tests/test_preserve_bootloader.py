@@ -32,7 +32,7 @@ class PreserveBootloaderTests(unittest.TestCase):
         module.EXPECTED_BOOTLOADER_SHA256 = "2cc42f955c5d0c5042b307ff67b646aa8d49740e2b0680a411506738b03e73eb"
 
     @staticmethod
-    def _write_mbr(path, first_lba=2048, partition_type=0x83, signature=b"\\x55\\xaa"):
+    def _write_mbr(path, first_lba=2048, partition_type=0x83, signature=b"\x55\xaa"):
         data = bytearray(2 * 1024 * 1024)
         data[510:512] = signature
         entry = 446
@@ -66,7 +66,7 @@ class PreserveBootloaderTests(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_rejects_invalid_mbr_signature(self):
-        self._write_mbr(self.image, signature=b"\\x00\\x00")
+        self._write_mbr(self.image, signature=b"\x00\x00")
         with self.assertRaises(module.ValidationError):
             module.assemble(self.image, self.boot, self.output)
 
