@@ -184,3 +184,16 @@ The full-image workflow has now been updated with a pre-build disk cleanup step 
 The workflow remains `workflow_dispatch` only. The connected GitHub tools do not expose workflow dispatch, so start the updated workflow manually using **Actions → A5E ImmortalWrt full-image inspection (UNTESTED) → Run workflow → main**. Do not rerun run #3's old failed job because it uses the old workflow revision.
 
 Any resulting image remains **UNTESTED / DO NOT FLASH** until the embedded boot chain and exact 1 GB DRAM parameters are validated. The companion OpenWrt repository remains out of scope and untouched.
+
+
+## 2026-11-06 — Phase 1/2 boot-chain verification and design
+
+- Reference assets on `reference-files` now have a verification manifest: `reference/VERIFICATION-MANIFEST-2026-11-06.md`.
+- U-Boot/SPL (896,329 bytes) SHA-256 `2cc42f955c5d0c5042b307ff67b646aa8d49740e2b0680a411506738b03e73eb`: independently hashed; eGON/SPL/FIT structure checked.
+- BOOT.SCR (375 bytes) SHA-256 `6b6e846f0f386c9809f33c51d2219c6da281337bbcd6f805752806db9ca5f814`: independently hashed; header and payload CRCs valid.
+- uImage (6,439,800 bytes) SHA-256 `092b355715b481ecd4791eb923f4f2533ab0b4dfd4a39c62c54413e9acde3c5e`: user supplied local hash; it matches the report/checksum list.
+- Limit: the original full image was not re-extracted in this pass; exact DRAM part/timings and 1 GB exclusivity remain unverified.
+- Static review of pinned upstream commit `4765b657625ec5bbda74b44400465fe043802b30` reconfirmed the A5E SD-image generator writes newly built U-Boot/SPL at byte offset `0x2000`, then writes the FAT and rootfs partitions.
+- Phase 2 design: preserve the integrated reference U-Boot/SPL as a single unit in a separate post-build output; validate hash/size, parse MBR for actual first-partition boundary, reject overlap, verify readback, and confirm all other image bytes remain unchanged. Keep the generated kernel FIT and rootfs from the same build; do not blindly reuse old uImage/BOOT.SCR.
+- Detailed review: [docs/BOOTCHAIN-PHASE1-2-REVIEW.md](docs/BOOTCHAIN-PHASE1-2-REVIEW.md). Preservation plan updated: [docs/BOOTLOADER-PRESERVATION-PLAN.md](docs/BOOTLOADER-PRESERVATION-PLAN.md).
+- No workflow files changed or workflows dispatched. No image or hardware was modified. Next step: implement and unit-test a standalone host-side assembly helper before wiring it into CI.
