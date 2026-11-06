@@ -654,3 +654,10 @@ Do not treat a filename, report, or copied checksum as binary verification. When
 - Existing full-image and kernel build workflows were not edited or dispatched. No firmware build, image flashing, or hardware write occurred.
 - The actual reference bootloader binary still has not been run through the helper in this local runtime. Its previously verified size/hash are unchanged; a true actual-binary fixture run remains outstanding.
 - Next: diagnose why GitHub Actions run #1 failed without step logs; then decide whether to add an integration fixture that obtains the pinned binary from the `reference-files` branch inside CI. Do not rerun workflows, merge, or flash without explicit authorization.
+
+
+### CI failure metadata inspection — 2026-11-06
+
+- Inspected run attempt 1 job metadata: one job, `runner_id=0`, empty `runner_name`, empty `steps`, started and completed within three seconds. This confirms the job did not reach any workflow step on a named runner.
+- The available metadata therefore points to a runner/job-start failure rather than a reported Python test failure, but the exact platform-side cause is not exposed by the connector. Keep the cause classified as **unresolved**.
+- No rerun or manual dispatch. The documentation-only commits do not match the workflow's path filters and did not trigger another run.
