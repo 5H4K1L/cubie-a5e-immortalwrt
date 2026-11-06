@@ -42,3 +42,14 @@ Branch: `feature/bootloader-preservation-helper`
 ### Test fixture review note
 
 A static review caught over-escaped byte literals in the expanded MBR tests; these were corrected so the synthetic fixture uses actual `55 aa` MBR signature bytes and `00 00` for the invalid-signature case. The 11-test suite remains pending execution against the committed branch files.
+
+
+## Validation results (2026-11-06)
+
+- Exact branch helper and expanded 11-test suite were reconstructed from committed GitHub file contents in an isolated local test directory.
+- `python3 -m py_compile`: passed.
+- `python3 -m unittest discover -s tests -v`: **11 tests passed**.
+- Additional sparse 324 MiB image fixture: passed using documented MBR partition starts (LBA 2048 and 45056) and a generated 896,329-byte test payload. It verified the actual MBR-derived first partition offset (1,048,576 bytes), replacement end (904,521 bytes), read-back digest, source preservation, image-size preservation, and byte identity outside the replacement range.
+- The extra fixture did **not** use the actual reference U-Boot/SPL binary; actual-binary assembly remains outstanding. The test payload's length matched the approved binary but its content/hash was generated and the helper's expected digest was patched for this isolated fixture.
+- This does not validate DRAM initialization, SPL execution, kernel boot, device tree, root filesystem, or hardware. Candidate outputs remain `UNTESTED — DO NOT FLASH`.
+- No workflow was modified or dispatched, and no firmware image or hardware was touched.
