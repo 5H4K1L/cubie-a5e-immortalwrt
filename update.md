@@ -643,3 +643,14 @@ Do not treat a filename, report, or copied checksum as binary verification. When
 - Important limitation: the additional fixture used a generated payload with the correct length, **not** the actual approved U-Boot/SPL binary. The actual reference binary's size and SHA-256 were previously verified, but it has not yet been exercised in the assembly helper in this runtime.
 - No CI workflow changes or workflow runs. No real firmware output, flash, or hardware write.
 - Next: obtain the exact reference binary in the local validation environment and run the same disposable-image assembly with its pinned SHA-256; then review CI test integration. Do not treat this as boot/runtime validation or flash approval.
+
+
+### Isolated CI test workflow added — 2026-11-06
+
+- Added `.github/workflows/bootloader-preservation-tests.yml` on this feature branch. It is separate from the long firmware/kernel build workflows and is limited to Python syntax compilation, the 11 helper unit tests, and `git diff --check`.
+- The workflow was triggered automatically by the commit that added it (push event). Run **42208328230** / run #1 completed with conclusion **failure** after approximately four seconds.
+- GitHub's job endpoint returned no step details, and the log download endpoint returned `BlobNotFound`; therefore the failing stage/reason is **not established**. Do not assume a test failure. No rerun has been requested or started.
+- The new workflow has not yet demonstrated a passing CI run. The independent local result remains: exact committed helper/tests compiled successfully and 11/11 unit tests passed.
+- Existing full-image and kernel build workflows were not edited or dispatched. No firmware build, image flashing, or hardware write occurred.
+- The actual reference bootloader binary still has not been run through the helper in this local runtime. Its previously verified size/hash are unchanged; a true actual-binary fixture run remains outstanding.
+- Next: diagnose why GitHub Actions run #1 failed without step logs; then decide whether to add an integration fixture that obtains the pinned binary from the `reference-files` branch inside CI. Do not rerun workflows, merge, or flash without explicit authorization.
