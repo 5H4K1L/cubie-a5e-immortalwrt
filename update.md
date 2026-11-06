@@ -628,3 +628,9 @@ Do not treat a filename, report, or copied checksum as binary verification. When
 - No workflow files changed; no workflow was dispatched, restarted or cancelled. No firmware image was assembled and no hardware/boot media was modified.
 - Next: execute the exact branch test suite and syntax check; then test against the actual reference binary and a disposable MBR image fixture. Only after those validations should CI integration be considered.
 - Documentation is kept branch-local. Do not treat this feature-branch update as a change to `main`.
+
+
+### Regression-test source correction — 2026-11-06
+
+- A review of the newly added tests caught over-escaped byte literals in the synthetic MBR fixture. Corrected the literals so the fixture writes the actual MBR signature bytes `55 aa` and the invalid-signature case writes `00 00`.
+- The correction is committed on this branch. The expanded 11-test suite remains unexecuted; do not report it as passing until it is run against the committed branch files.
