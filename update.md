@@ -127,7 +127,6 @@ Do not flash the current artifact.
 ## Companion OpenWrt status
 
 [OpenWrt companion repository](https://github.com/5H4K1L/cubie-a5e-openwrt) passed kernel validation in [run #3](https://github.com/5H4K1L/cubie-a5e-openwrt/actions/runs/41975643597), branch `build/initial-a5e-workflow`, commit `ce996798ae6db98c8899c2958cdb8dcbbbe5d6be`. Its artifact is also kernel/DTB only, not a complete image.
-
 ## Important: not flashable
 
 Neither repository has yet produced a complete, hardware-validated A5E firmware image. Do not flash a raw kernel/DTB artifact. Before any test boot, verify the FIT format, boot script, rootfs, partition layout, load/entry addresses, A5E DTB, root arguments, bootloader compatibility, and recovery plan. Test from a separate microSD card only.
@@ -257,7 +256,6 @@ Do not treat the new assertions as passed until run #14 reaches the relevant ste
 - Kernel: Linux 6.18.60, ARM64 Image, 15,501,320 bytes.
 - DTB: 30,722 bytes, FDT version 17.
 - Artifact contains `Image`, `sun55i-a527-cubie-a5e.dtb`, `kernel.config`, and `BUILD-MANIFEST.txt`.
-
 ### Verified checksums from the artifact manifest
 
 | File | SHA-256 |
@@ -388,7 +386,6 @@ Workflow review correction: after rereading the committed YAML, the build and pa
 - Follow-up documentation commit: [`ac81268307d21db160a8f28dca78abe27f88d8ad`](https://github.com/5H4K1L/cubie-a5e-immortalwrt/commit/ac81268307d21db160a8f28dca78abe27f88d8ad).
 - The current committed workflow YAML was fetched and inspected. Both patch commands now use `build/patches/950-sun55i-iommu-attach-dev-linux-6.18.patch`.
 - **Important validation distinction:** the corrected YAML has been inspected, but no successful rerun of the full-image workflow has yet been confirmed. Do not describe the full-image build as fixed/validated until a new run passes the patch step and completes.
-
 ### Restart status and next action
 
 At the time of this update, the available GitHub connection did not expose a workflow-dispatch action. No new run was started, and the old failed run was not rerun because it is tied to the old commit.
@@ -473,3 +470,73 @@ Choose **Run workflow → main → Run workflow**. Then verify the new run's cle
 **Safety:** no complete image or inspection artifact exists from runs #2/#3. Any future image remains **UNTESTED / DO NOT FLASH** until the embedded U-Boot/SPL and exact 1 GB DRAM configuration have been validated against the known-working boot chain.
 
 **Scope:** only `5H4K1L/cubie-a5e-immortalwrt` was inspected and changed. The companion OpenWrt repository was not touched and no workflow was started there.
+
+---
+
+## 2026-11-06 — Collaborator access, Actions minutes and build launch procedure
+
+**Scope:** this section applies only to `5H4K1L/cubie-a5e-immortalwrt`. Do not start or modify workflows in the companion OpenWrt repository.
+
+### Important: adding a collaborator does not transfer Actions minutes
+
+GitHub Actions usage for a private repository is charged to the repository owner/account that owns the repository. Inviting a second GitHub account as a collaborator does **not** add that account's free monthly Actions minutes to this repository.
+
+Choose the access/billing arrangement deliberately:
+
+- **Keep the repository under the current owner:** invite the second account as a collaborator. This can provide repository access, but the current owner's Actions quota/billing still applies.
+- **Use the second account's Actions allowance:** transfer repository ownership to that account, or create a fork/copy under that account and run Actions there. A collaborator invitation alone is not enough.
+- Do not delete the original repository. If transferring or copying, preserve the original as a recovery/reference copy until the new owner copy and its Actions configuration are verified.
+
+Before transferring ownership or copying, review repository Actions secrets and variables, environment secrets, branch protection/rulesets, repository variables, releases, and installed GitHub App integrations. Secrets may need to be recreated; never copy secrets into source files or this handoff document.
+
+### Add a collaborator
+
+On GitHub, while signed in as the repository owner:
+
+1. Open [the ImmortalWrt repository settings](https://github.com/5H4K1L/cubie-a5e-immortalwrt/settings/access).
+2. Open **Collaborators** (or **Collaborators and teams**) and choose **Add people**.
+3. Enter the second account's exact GitHub username and send the invitation.
+4. Grant **Write** access if that account is expected to dispatch workflows or push documentation/code changes. Do not grant Admin unless repository administration is actually required.
+5. The invited account must accept the invitation.
+
+The ChatGPT GitHub connection must also be authorized for this repository. Adding a GitHub collaborator does not automatically change which GitHub identity the ChatGPT connection uses. If the connected identity cannot see the repository, reconnect/reauthorize the GitHub integration with an account that has access, or update the GitHub App installation's repository access. Never share a password, personal access token, or other secret in chat.
+
+### Build workflow to run
+
+The current full-image workflow is:
+
+- File: `.github/workflows/full-image-inspection.yml`
+- Workflow name: **A5E ImmortalWrt full-image inspection (UNTESTED)**
+- Trigger: manual `workflow_dispatch` only; pushes do not start it.
+- Branch: `main`
+- Job: `image-inspection`
+- Runner: `ubuntu-24.04`, timeout 360 minutes.
+- Build command: `make -j2 V=s`.
+- Upstream source is pinned to `immortalwrt/immortalwrt` commit `4765b657625ec5bbda74b44400465fe043802b30`.
+- The workflow applies the Linux 6.18 IOMMU callback compatibility patch and checks the A5E profile/config before building.
+- A runner disk-cleanup step was added after the previous full-image build exhausted disk space. That mitigation has **not yet been proven by a successful full-image run**.
+
+### Launch checklist
+
+1. Confirm the collaborator invitation is accepted and the account has **Write** access.
+2. Confirm the account that owns the private repository has sufficient Actions minutes/billing availability. A collaborator's unused minutes do not cover this repository.
+3. Confirm the ChatGPT GitHub connection can read and write this exact repository and has Actions write permission if a run is to be started through the integration.
+4. Check the Actions page for active runs. Do not start another build if a matching full-image build is already running.
+5. Open [A5E ImmortalWrt full-image inspection](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/workflows/full-image-inspection.yml).
+6. Select **Run workflow**, choose branch **main**, and select **Run workflow** once. This is the full-image inspection workflow, not the kernel-only validation workflow.
+7. Monitor the run from the start. Verify runner cleanup/disk space, target profile, IOMMU patch application, full image build, image inspection, and artifact upload. If it fails, inspect the failing step before retrying; do not launch duplicate builds.
+
+### Artifact handling and hardware safety
+
+A successful run should upload `cubie-a5e-UNTESTED-full-image-inspection` with 7-day retention. Download and inspect the manifest, image, partition table, early-boot region, and candidate U-Boot/SPL before considering any hardware test.
+
+**This workflow is inspection-only. DO NOT FLASH its image.** The standard sunxi image recipe embeds a newly built U-Boot/SPL at byte offset `0x2000`. The exact early boot chain and DRAM timing have not been validated for this 1 GB A5E board. Preserve the known-working microSD and SPI contents. A successful CI run is not proof of hardware bootability.
+
+### Current status at this handoff
+
+- The previous full-image run #3 failed because the runner had only about 85 MB free; the kernel linker and later filesystem steps reported `No space left on device`.
+- A runner cleanup mitigation is committed, but no post-mitigation successful run is confirmed yet.
+- The full-image workflow is manual-only and is the correct workflow to launch for the current full-image inspection objective.
+- The kernel-validation workflow's successful run #14 is a separate kernel/DTB result; it is not a full firmware image.
+- No sysupgrade image has been built or validated. Do not label the current full-image workflow artifact as a sysupgrade image.
+- The companion OpenWrt repository remains out of scope.
