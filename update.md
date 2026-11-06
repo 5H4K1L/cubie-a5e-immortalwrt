@@ -617,3 +617,14 @@ Do not treat a filename, report, or copied checksum as binary verification. When
 - Phase 2 design: preserve the integrated reference U-Boot/SPL as a single unit in a separate post-build output; validate hash/size, parse MBR for actual first-partition boundary, reject overlap, verify readback, and confirm all other image bytes remain unchanged. Keep the generated kernel FIT and rootfs from the same build; do not blindly reuse old uImage/BOOT.SCR.
 - Detailed review: [docs/BOOTCHAIN-PHASE1-2-REVIEW.md](docs/BOOTCHAIN-PHASE1-2-REVIEW.md). Preservation plan updated: [docs/BOOTLOADER-PRESERVATION-PLAN.md](docs/BOOTLOADER-PRESERVATION-PLAN.md).
 - No workflow files changed or workflows dispatched. No image or hardware was modified. Next step: implement and unit-test a standalone host-side assembly helper before wiring it into CI.
+
+
+## 2026-11-06 — Phase 3 helper review and regression-test expansion
+
+- Active implementation branch: `feature/bootloader-preservation-helper`.
+- Reviewed `scripts/preserve_bootloader.py`, its synthetic-image tests and the usage/safety README. The helper pins the approved integrated U-Boot/SPL binary by size (896,329 bytes) and SHA-256 (`2cc42f955c5d0c5042b307ff67b646aa8d49740e2b0680a411506738b03e73eb`), parses the actual MBR partition starts, rejects GPT/extended/malformed/overlapping/out-of-image layouts, writes only at offset `0x2000` in a temporary copy, verifies readback and unchanged bytes outside the replacement range, and refuses to overwrite an existing output.
+- Added two regression tests: invalid MBR partition boot flag; output path equal to the source image. The test suite now contains 11 tests. The expanded suite has **not yet been executed**; the earlier local validation covered 9 tests against an equivalent local implementation, not the exact committed GitHub source.
+- The reference bootloader's binary size/hash were previously independently verified and structure-checked. A disposable full-layout image assembly using that actual binary has not yet been performed.
+- No workflow files changed; no workflow was dispatched, restarted or cancelled. No firmware image was assembled and no hardware/boot media was modified.
+- Next: execute the exact branch test suite and syntax check; then test against the actual reference binary and a disposable MBR image fixture. Only after those validations should CI integration be considered.
+- Documentation is kept branch-local. Do not treat this feature-branch update as a change to `main`.
