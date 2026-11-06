@@ -1,0 +1,46 @@
+name: A5E bootloader-preservation helper tests
+
+on:
+  push:
+    branches:
+      - feature/bootloader-preservation-helper
+    paths:
+      - "scripts/preserve_bootloader.py"
+      - "tests/test_preserve_bootloader.py"
+      - ".github/workflows/bootloader-preservation-tests.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/preserve_bootloader.py"
+      - "tests/test_preserve_bootloader.py"
+      - ".github/workflows/bootloader-preservation-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  helper-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile helper and tests
+        run: |
+          python -m py_compile scripts/preserve_bootloader.py tests/test_preserve_bootloader.py
+
+      - name: Run helper unit tests
+        run: |
+          python -m unittest discover -s tests -v
+
+      - name: Check patch formatting
+        run: |
+          git diff --check

@@ -197,3 +197,54 @@ Any resulting image remains **UNTESTED / DO NOT FLASH** until the embedded boot 
 - Phase 2 design: preserve the integrated reference U-Boot/SPL as a single unit in a separate post-build output; validate hash/size, parse MBR for actual first-partition boundary, reject overlap, verify readback, and confirm all other image bytes remain unchanged. Keep the generated kernel FIT and rootfs from the same build; do not blindly reuse old uImage/BOOT.SCR.
 - Detailed review: [docs/BOOTCHAIN-PHASE1-2-REVIEW.md](docs/BOOTCHAIN-PHASE1-2-REVIEW.md). Preservation plan updated: [docs/BOOTLOADER-PRESERVATION-PLAN.md](docs/BOOTLOADER-PRESERVATION-PLAN.md).
 - No workflow files changed or workflows dispatched. No image or hardware was modified. Next step: implement and unit-test a standalone host-side assembly helper before wiring it into CI.
+
+
+## 13. Phase 3 — bootloader-preservation helper (2026-11-06)
+
+Active work branch: `feature/bootloader-preservation-helper` (not merged to `main`).
+
+Files:
+- `scripts/preserve_bootloader.py` — host-side candidate assembler.
+- `tests/test_preserve_bootloader.py` — synthetic MBR/image tests.
+- `tools/bootloader-preservation/README.md` — usage and safety notes.
+- `docs/PHASE3-HELPER-IMPLEMENTATION.md` — implementation and validation record.
+
+The helper requires the approved U-Boot/SPL binary (896,329 bytes; SHA-256 `2cc42f955c5d0c5042b307ff67b646aa8d49740e2b0680a411506738b03e73eb`), parses the MBR to find the earliest partition, checks that the replacement at byte offset `0x2000` ends before that partition, writes to a separate temporary copy, verifies readback and all bytes outside the replacement range, and refuses to overwrite an existing output. It emits `UNTESTED — DO NOT FLASH`.
+
+The initial local validation recorded 9 tests passing against an equivalent implementation. Two more tests were added for an invalid partition boot flag and output equal to the source image; the expanded 11-test suite has not yet been run against the exact branch files. A disposable full-layout image using the real reference binary has not yet been assembled.
+
+**Do not dispatch or restart any workflow, merge the branch, or flash an image without explicit user authorization.** No workflow files changed or dispatched during this phase. Continue updating `update.md` and this handover whenever project work changes. Work only in `5H4K1L/cubie-a5e-immortalwrt`; the companion OpenWrt repository is out of scope.
+
+
+**Test-fixture correction:** a static review caught and corrected over-escaped MBR signature byte literals in the newly added regression tests. The fixture now writes actual bytes `55 aa` and `00 00`. The 11-test suite is still pending execution against the committed files; do not claim a pass yet.
+
+
+### Phase 3 validation update — 2026-11-06
+
+- Exact committed helper and 11-test suite reconstructed from branch content in an isolated local test directory: `py_compile` passed; **11/11 unit tests passed**.
+- Additional sparse disposable image fixture used the documented partition starts (p1 LBA 2048; p2 LBA 45056) and an 896,329-byte generated payload. Verified first-partition offset 1,048,576, bootloader replacement exclusive end 904,521, read-back hash, unchanged source, unchanged bytes outside replacement range, and unchanged image size.
+- The generated payload was not the actual approved reference binary. Although that binary's size/hash were previously verified, assembly using the actual binary remains pending. This is host-side fixture validation only, not DRAM/SPL/runtime validation and not flash authorization.
+- No workflow files changed or dispatched; no firmware image assembled; no hardware/boot media modified.
+- Next step: make the actual pinned reference binary available to the local test environment and repeat disposable-image assembly with its real SHA-256, then consider adding the unit tests to CI. Continue work only in this ImmortalWrt repository.
+
+
+### CI helper workflow update — 2026-11-06
+
+- Added `.github/workflows/bootloader-preservation-tests.yml` to this branch only. It is a small isolated Python test workflow; it does not build firmware or access hardware.
+- The push that created the workflow automatically triggered run **42208328230**. It finished as `failure` in about four seconds. The GitHub job API exposed no steps and the log endpoint returned `BlobNotFound`, so the cause is unknown. Do not describe this as a unit-test failure; no test output was available.
+- No retry/re-run has been started. The 11/11 local unit-test and syntax results remain valid independently of the CI run.
+- Actual reference binary assembly remains pending in the local runtime. The pinned binary is on branch `reference-files`; an option for a CI integration fixture is to fetch that branch in the test workflow, verify size/SHA-256, create a disposable MBR image, and run the helper against the actual binary. Do not add this integration step until the failed-run cause is understood.
+- No changes to the full-image or kernel build workflows; no firmware build, merge, flash, or hardware write.
+- Continue updating `update.md` and this handover when project state changes. Work only in `5H4K1L/cubie-a5e-immortalwrt`.
+
+
+**Additional CI metadata:** the sole job in run `42208328230` has `runner_id=0`, an empty runner name, and no steps; it started and completed within three seconds. It never reached the Python commands. The exact platform-side cause remains unknown. Do not treat this as a test assertion failure and do not rerun/dispatch without authorization.
+
+
+### GitHub Actions account limit confirmed — 2026-11-06
+
+- User confirmed the GitHub job-start notice about failed account payments or a spending limit, and clarified that the account's included 2,000 Actions minutes are exhausted.
+- This is the confirmed reason run 42208328230 never started: GitHub blocked runner allocation before any workflow step. It is an account usage/billing restriction, not a code or test failure. The CI result provides no test verdict.
+- Do not enable paid usage or increase spending unless the user chooses. No rerun has been started. Retry the isolated helper workflow only after the user confirms the restriction is resolved and authorizes it.
+- Local syntax check and 11/11 unit tests remain passed. Actual reference-binary assembly is still pending. No firmware build, merge, image assembly, flashing, or hardware write occurred.
+- Continue work only in 5H4K1L/cubie-a5e-immortalwrt.

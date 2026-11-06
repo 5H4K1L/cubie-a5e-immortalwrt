@@ -617,3 +617,56 @@ Do not treat a filename, report, or copied checksum as binary verification. When
 - Phase 2 design: preserve the integrated reference U-Boot/SPL as a single unit in a separate post-build output; validate hash/size, parse MBR for actual first-partition boundary, reject overlap, verify readback, and confirm all other image bytes remain unchanged. Keep the generated kernel FIT and rootfs from the same build; do not blindly reuse old uImage/BOOT.SCR.
 - Detailed review: [docs/BOOTCHAIN-PHASE1-2-REVIEW.md](docs/BOOTCHAIN-PHASE1-2-REVIEW.md). Preservation plan updated: [docs/BOOTLOADER-PRESERVATION-PLAN.md](docs/BOOTLOADER-PRESERVATION-PLAN.md).
 - No workflow files changed or workflows dispatched. No image or hardware was modified. Next step: implement and unit-test a standalone host-side assembly helper before wiring it into CI.
+
+
+## 2026-11-06 — Phase 3 helper review and regression-test expansion
+
+- Active implementation branch: `feature/bootloader-preservation-helper`.
+- Reviewed `scripts/preserve_bootloader.py`, its synthetic-image tests and the usage/safety README. The helper pins the approved integrated U-Boot/SPL binary by size (896,329 bytes) and SHA-256 (`2cc42f955c5d0c5042b307ff67b646aa8d49740e2b0680a411506738b03e73eb`), parses the actual MBR partition starts, rejects GPT/extended/malformed/overlapping/out-of-image layouts, writes only at offset `0x2000` in a temporary copy, verifies readback and unchanged bytes outside the replacement range, and refuses to overwrite an existing output.
+- Added two regression tests: invalid MBR partition boot flag; output path equal to the source image. The test suite now contains 11 tests. The expanded suite has **not yet been executed**; the earlier local validation covered 9 tests against an equivalent local implementation, not the exact committed GitHub source.
+- The reference bootloader's binary size/hash were previously independently verified and structure-checked. A disposable full-layout image assembly using that actual binary has not yet been performed.
+- No workflow files changed; no workflow was dispatched, restarted or cancelled. No firmware image was assembled and no hardware/boot media was modified.
+- Next: execute the exact branch test suite and syntax check; then test against the actual reference binary and a disposable MBR image fixture. Only after those validations should CI integration be considered.
+- Documentation is kept branch-local. Do not treat this feature-branch update as a change to `main`.
+
+
+### Regression-test source correction — 2026-11-06
+
+- A review of the newly added tests caught over-escaped byte literals in the synthetic MBR fixture. Corrected the literals so the fixture writes the actual MBR signature bytes `55 aa` and the invalid-signature case writes `00 00`.
+- The correction is committed on this branch. The expanded 11-test suite remains unexecuted; do not report it as passing until it is run against the committed branch files.
+
+
+### Phase 3 validation — 2026-11-06
+
+- Reconstructed the exact committed helper and 11-test suite from the branch files in an isolated local test directory; `python3 -m py_compile` passed and all **11/11 unit tests passed**.
+- Ran an additional sparse 324 MiB disposable image fixture using the documented MBR layout (partition 1 at LBA 2048; partition 2 at LBA 45056) and a generated test payload of the production size (896,329 bytes). The helper correctly found the first partition at byte 1,048,576, placed the payload through byte 904,520 (exclusive end 904,521), verified read-back, preserved the source, and confirmed all bytes outside the replacement range were unchanged.
+- Important limitation: the additional fixture used a generated payload with the correct length, **not** the actual approved U-Boot/SPL binary. The actual reference binary's size and SHA-256 were previously verified, but it has not yet been exercised in the assembly helper in this runtime.
+- No CI workflow changes or workflow runs. No real firmware output, flash, or hardware write.
+- Next: obtain the exact reference binary in the local validation environment and run the same disposable-image assembly with its pinned SHA-256; then review CI test integration. Do not treat this as boot/runtime validation or flash approval.
+
+
+### Isolated CI test workflow added — 2026-11-06
+
+- Added `.github/workflows/bootloader-preservation-tests.yml` on this feature branch. It is separate from the long firmware/kernel build workflows and is limited to Python syntax compilation, the 11 helper unit tests, and `git diff --check`.
+- The workflow was triggered automatically by the commit that added it (push event). Run **42208328230** / run #1 completed with conclusion **failure** after approximately four seconds.
+- GitHub's job endpoint returned no step details, and the log download endpoint returned `BlobNotFound`; therefore the failing stage/reason is **not established**. Do not assume a test failure. No rerun has been requested or started.
+- The new workflow has not yet demonstrated a passing CI run. The independent local result remains: exact committed helper/tests compiled successfully and 11/11 unit tests passed.
+- Existing full-image and kernel build workflows were not edited or dispatched. No firmware build, image flashing, or hardware write occurred.
+- The actual reference bootloader binary still has not been run through the helper in this local runtime. Its previously verified size/hash are unchanged; a true actual-binary fixture run remains outstanding.
+- Next: diagnose why GitHub Actions run #1 failed without step logs; then decide whether to add an integration fixture that obtains the pinned binary from the `reference-files` branch inside CI. Do not rerun workflows, merge, or flash without explicit authorization.
+
+
+### CI failure metadata inspection — 2026-11-06
+
+- Inspected run attempt 1 job metadata: one job, `runner_id=0`, empty `runner_name`, empty `steps`, started and completed within three seconds. This confirms the job did not reach any workflow step on a named runner.
+- The available metadata therefore points to a runner/job-start failure rather than a reported Python test failure, but the exact platform-side cause is not exposed by the connector. Keep the cause classified as **unresolved**.
+- No rerun or manual dispatch. The documentation-only commits do not match the workflow's path filters and did not trigger another run.
+
+
+### GitHub Actions account limit confirmed — 2026-11-06
+
+- User confirmed GitHub displayed: “The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings”, and clarified that the account's included 2,000 Actions minutes have been exhausted.
+- This explains run **42208328230**: GitHub blocked the job before assigning a runner or starting any workflow step. It is an account billing/usage-limit gate, **not** a helper-code or unit-test failure. No CI test verdict can be inferred from that run.
+- Do not increase spending or enable paid usage unless the user chooses to. No rerun has been started. Retry the isolated helper workflow only after the user confirms the Actions usage/billing restriction is resolved and authorizes a retry.
+- Local validation remains unchanged: py_compile passed and 11/11 unit tests passed. The actual reference-binary assembly fixture remains outstanding.
+- No firmware/kernel build, merge, image assembly, flashing, or hardware write occurred. Scope remains only this ImmortalWrt repository.
