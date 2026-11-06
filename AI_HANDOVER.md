@@ -226,3 +226,13 @@ The initial local validation recorded 9 tests passing against an equivalent impl
 - The generated payload was not the actual approved reference binary. Although that binary's size/hash were previously verified, assembly using the actual binary remains pending. This is host-side fixture validation only, not DRAM/SPL/runtime validation and not flash authorization.
 - No workflow files changed or dispatched; no firmware image assembled; no hardware/boot media modified.
 - Next step: make the actual pinned reference binary available to the local test environment and repeat disposable-image assembly with its real SHA-256, then consider adding the unit tests to CI. Continue work only in this ImmortalWrt repository.
+
+
+### CI helper workflow update — 2026-11-06
+
+- Added `.github/workflows/bootloader-preservation-tests.yml` to this branch only. It is a small isolated Python test workflow; it does not build firmware or access hardware.
+- The push that created the workflow automatically triggered run **42208328230**. It finished as `failure` in about four seconds. The GitHub job API exposed no steps and the log endpoint returned `BlobNotFound`, so the cause is unknown. Do not describe this as a unit-test failure; no test output was available.
+- No retry/re-run has been started. The 11/11 local unit-test and syntax results remain valid independently of the CI run.
+- Actual reference binary assembly remains pending in the local runtime. The pinned binary is on branch `reference-files`; an option for a CI integration fixture is to fetch that branch in the test workflow, verify size/SHA-256, create a disposable MBR image, and run the helper against the actual binary. Do not add this integration step until the failed-run cause is understood.
+- No changes to the full-image or kernel build workflows; no firmware build, merge, flash, or hardware write.
+- Continue updating `update.md` and this handover when project state changes. Work only in `5H4K1L/cubie-a5e-immortalwrt`.
