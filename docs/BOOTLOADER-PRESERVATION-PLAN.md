@@ -101,3 +101,20 @@ The pinned upstream U-Boot patch set includes Cubie A5E-specific changes, includ
 
 These are relevant to board support and Ethernet behavior, but they do **not** establish that the generated SPL's DRAM initialization matches this physical 1 GB board. Ethernet support must not be mistaken for proof of DRAM compatibility.
 
+
+
+---
+
+## Superseding update — Phase 1 and Phase 2 completed (2026-11-06)
+
+The original Phase 1 "waiting for user upload" and "not yet independently verified" status above is historical and superseded by the verification completed on 2026-11-06.
+
+- Integrated `u-boot-sunxi-with-spl.bin`: 896,329 bytes; SHA-256 `2cc42f955c5d0c5042b307ff67b646aa8d49740e2b0680a411506738b03e73eb`; independently hashed and structurally inspected.
+- `BOOT.SCR`: 375 bytes; SHA-256 `6b6e846f0f386c9809f33c51d2219c6da281337bbcd6f805752806db9ca5f814`; independently hashed and both legacy U-Boot CRCs validated.
+- `uImage`: 6,439,800 bytes; SHA-256 `092b355715b481ecd4791eb923f4f2533ab0b4dfd4a39c62c54413e9acde3c5e`; user-provided local hash matches the extraction report and checksum list.
+
+The reference branch now contains `reference/VERIFICATION-MANIFEST-2026-11-06.md`. These results verify agreement with the extraction report; the original full image was not independently re-extracted in this follow-up pass. Exact DRAM part/timings and 1 GB exclusivity remain unverified.
+
+Phase 2 static review reconfirmed that the pinned upstream sunxi image generator writes a newly built U-Boot/SPL at byte offset `0x2000`. The detailed review and fail-closed assembly design are in [BOOTCHAIN-PHASE1-2-REVIEW.md](BOOTCHAIN-PHASE1-2-REVIEW.md).
+
+**Next:** implement and test a standalone host-side image-assembly helper with hash, length, MBR partition-boundary, post-write readback and unchanged-region checks. Do not modify or dispatch the workflow until that helper is reviewed. Keep the normal build image unchanged and produce any preserved-bootloader candidate as a separate file. No workflow was run and no hardware was modified during Phase 1/2.
