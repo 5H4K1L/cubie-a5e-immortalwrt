@@ -168,13 +168,15 @@ For detailed chronology, older run history, artifact inspection, IOMMU binding r
 
 ## 12. Latest CI status — 2026-11-06
 
-The corrected full-image workflow is currently running twice on project commit `ac81268307d21db160a8f28dca78abe27f88d8ad`:
+The corrected full-image runs have completed on project commit `ac81268307d21db160a8f28dca78abe27f88d8ad`:
 
-- [Run #2 — 42046450168](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42046450168)
-- [Run #3 — 42135715426](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42135715426)
+- [Run #2 — 42046450168](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42046450168): cancelled during image build.
+- [Run #3 — 42135715426](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42135715426): failed during image build because the GitHub Actions runner ran out of disk space (85 MB remaining; linker and image-generation steps reported `No space left on device`).
 
-Latest check: both `image-inspection` jobs are in progress at **Build complete device image (CI inspection only)**. Both have passed checkout, dependency installation, feed preparation, A5E profile configuration and IOMMU patch application. The corrected patch path is now confirmed working in CI.
+Both runs passed the A5E profile and IOMMU patch steps. The previous patch-path issue is fixed. No image inspection or artifact upload completed.
 
-Do not start another duplicate build while these runs are active. Continue monitoring both. Artifact inspection/upload has not yet completed and no full-image artifact is confirmed. A transient 404/BlobNotFound occurred when requesting live job logs; retry after completion if logs are needed.
+The full-image workflow has now been updated with a pre-build disk cleanup step (unused large SDKs/caches, apt cache and Docker data) and post-install apt cleanup. This mitigation still needs a fresh manual run to validate.
 
-All generated firmware remains inspection-only and **DO NOT FLASH** until the embedded boot chain and exact 1 GB DRAM parameters are validated. The companion OpenWrt repository remains out of scope and untouched.
+The workflow remains `workflow_dispatch` only. The connected GitHub tools do not expose workflow dispatch, so start the updated workflow manually using **Actions → A5E ImmortalWrt full-image inspection (UNTESTED) → Run workflow → main**. Do not rerun run #3's old failed job because it uses the old workflow revision.
+
+Any resulting image remains **UNTESTED / DO NOT FLASH** until the embedded boot chain and exact 1 GB DRAM parameters are validated. The companion OpenWrt repository remains out of scope and untouched.
