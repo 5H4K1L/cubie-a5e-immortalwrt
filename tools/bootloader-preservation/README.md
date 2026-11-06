@@ -1,8 +1,9 @@
 # A5E bootloader-preservation helper
 
 Creates a separate, untested image candidate by replacing only bytes at offset
-`0x2000` with the verified integrated A5E U-Boot/SPL binary. It never edits the
-source image and refuses to overwrite an existing output.
+`0x2000` with the verified integrated A5E U-Boot/SPL binary. Supply an **uncompressed
+raw .img**, not the `.img.gz` archive. It never edits the source image and refuses
+to overwrite an existing output.
 
 ## Run
 
@@ -17,8 +18,9 @@ The script is pinned to the reference binary's expected size (896329 bytes)
 and SHA-256
 `2cc42f955c5d0c5042b307ff67b646aa8d49740e2b0680a411506738b03e73eb`.
 It requires an MBR image with a valid `0x55AA` signature, rejects protective
-GPT MBRs and malformed partition entries, and checks that the payload ends
-before the earliest MBR partition. After writing, it checks the bootloader
+GPT MBRs, extended partitions, malformed entries, partitions extending past
+the image, and overlapping partitions; it checks that the payload ends before
+the earliest MBR partition. After writing, it checks the bootloader
 read-back hash, image size, and byte-for-byte identity of every byte outside
 the replacement region. Output publication is atomic and refuses clobbering.
 
