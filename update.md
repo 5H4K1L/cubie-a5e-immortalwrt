@@ -415,3 +415,23 @@ A successful CI build is not proof of hardware bootability. The standard sunxi S
 - The path typo has been corrected and committed, but rerun is still pending.
 - Do not add guessed IOMMU client `iommus` properties, unverified Wi-Fi power sequencing, or unverified DRAM timing changes.
 - Continue work in this ImmortalWrt repository only unless the user explicitly changes scope.
+
+
+## 2026-11-06 — Follow-up: corrected full-image workflows are running
+
+A fresh Actions status check found that the corrected full-image workflow has now been dispatched twice on the same project commit:
+
+- Run #2: [42046450168](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42046450168)
+- Run #3: [42135715426](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42135715426)
+- Both use project commit `ac81268307d21db160a8f28dca78abe27f88d8ad`.
+- Latest observed state: both jobs `image-inspection` are `in_progress`, currently executing **Build complete device image (CI inspection only)**.
+- Both have passed checkout, dependency installation, package-feed preparation, exact A5E 1 GB profile configuration, and the Linux 6.18 IOMMU patch application step.
+- The IOMMU patch path correction is therefore confirmed to pass in both runs.
+- Image inspection and artifact upload have not yet run at the time of this update.
+- No full-image artifact or successful complete build is confirmed yet.
+
+Do not dispatch another duplicate build while either run remains active. Monitor both runs; if one succeeds and uploads the inspection artifact, inspect its manifest and boot assets. If both finish, compare outcomes and retain the best evidence. If one fails, inspect its job logs and fix only the demonstrated failure.
+
+The available workflow-job-log download returned a transient 404/BlobNotFound while the jobs were still running; rely on Actions run/job/step status until logs become available after completion.
+
+Safety remains unchanged: CI output is inspection-only and **DO NOT FLASH** pending exact boot-chain and 1 GB DRAM validation. No actions have been taken in the companion OpenWrt repository.
