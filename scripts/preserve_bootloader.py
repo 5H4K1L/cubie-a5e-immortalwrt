@@ -45,10 +45,12 @@ def first_partition_offset(image: Path) -> int:
         raise ValidationError("Image is smaller than one MBR sector")
     if mbr[510:512] != MBR_SIGNATURE:
         raise ValidationError("Invalid MBR signature (expected 0x55AA)")
-    starts = []
+    image_size = image.stat().st_size
+    partitions = []
     for index in range(MBR_PARTITION_COUNT):
         pos = MBR_PARTITION_TABLE_OFFSET + index * MBR_PARTITION_ENTRY_SIZE
         entry = mbr[pos:pos + MBR_PARTITION_ENTRY_SIZE]
+        boot_flag = entry[0]
         partition_type = entry[4]
         start_lba = int.from_bytes(entry[8:12], "little")
         sectors = int.from_bytes(entry[12:16], "little")
@@ -56,12 +58,22 @@ def first_partition_offset(image: Path) -> int:
             continue
         if partition_type == 0xEE:
             raise ValidationError("Protective MBR/GPT image is not supported")
-        if partition_type == 0 or start_lba == 0 or sectors == 0:
+        if partition_type in (0x05, 0x0F, 0x85):
+            raise ValidationError("Extended MBR partitions are not supported")
+        if boot_flag not in (0x00, 0x80) or partition_type == 0 or start_lba == 0 or sectors == 0:
             raise ValidationError(f"Malformed MBR partition entry {index + 1}")
-        starts.append(start_lba * SECTOR_SIZE)
-    if not starts:
+        start = start_lba * SECTOR_SIZE
+        end = (start_lba + sectors) * SECTOR_SIZE
+        if end > image_size:
+            raise ValidationError(f"MBR partition entry {index + 1} extends beyond image size")
+        partitions.append((start, end, index + 1))
+    if not partitions:
         raise ValidationError("No non-empty MBR partitions found")
-    return min(starts)
+    partitions.sort()
+    for previous, current in zip(partitions, partitions[1:]):
+        if current[0] < previous[1]:
+            raise ValidationError(f"MBR partition entries {previous[2]} and {current[2]} overlap")
+    return partitions[0][0]
 
 
 def _hash_region(stream, length: int, chunk_size: int = 1024 * 1024) -> str:
