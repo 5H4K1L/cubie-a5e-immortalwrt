@@ -90,3 +90,14 @@ Before any production use, establish a recovery route and test on a spare SD car
 ## Decision
 
 **Proceed with static review and reference-byte verification only. Do not flash. Do not dispatch another full-image workflow until the runner-allocation issue is understood or the user explicitly approves a controlled retry.**
+
+
+## Additional A5E-specific U-Boot source findings
+
+The pinned upstream U-Boot patch set includes Cubie A5E-specific changes, including:
+- A523 pinctrl support for the GMAC1 pin function.
+- Enabling the DWC Ethernet QoS / GMAC1 controller in `radxa-cubie-a5e_defconfig`.
+- A Cubie A5E device-tree update enabling the second Ethernet controller and its external PHY.
+
+These are relevant to board support and Ethernet behavior, but they do **not** establish that the generated SPL's DRAM initialization matches this physical 1 GB board. Ethernet support must not be mistaken for proof of DRAM compatibility.
+
