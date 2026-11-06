@@ -540,3 +540,67 @@ A successful run should upload `cubie-a5e-UNTESTED-full-image-inspection` with 7
 - The kernel-validation workflow's successful run #14 is a separate kernel/DTB result; it is not a full firmware image.
 - No sysupgrade image has been built or validated. Do not label the current full-image workflow artifact as a sysupgrade image.
 - The companion OpenWrt repository remains out of scope.
+
+
+---
+
+## 2026-11-06 — Latest runner failure and bootloader-preservation review
+
+**Scope:** this update applies only to `5H4K1L/cubie-a5e-immortalwrt`. The companion OpenWrt repository was not inspected or changed for this task. No workflow was dispatched, restarted, cancelled, or otherwise triggered.
+
+### Full-image run #4 — failed before runner allocation
+
+- Run: [#4 — 42153635903](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42153635903)
+- Workflow: `A5E ImmortalWrt full-image inspection (UNTESTED)`
+- Branch: `main`; project commit: `33f36b81997e6587cd57fa967e731aa6832e1bcc`
+- Conclusion: failure; job ID `127682517508`.
+- Job metadata reports `runner_id=0`, an empty runner name, and `steps=[]`.
+
+This run failed before a runner executed any step. It is not evidence of a source compilation failure. The available metadata does not establish the exact infrastructure cause, so no more specific cause is asserted. In particular, the disk-cleanup mitigation added after run #3 was **not executed and remains unvalidated**.
+
+Run #3 remains the confirmed disk-exhaustion failure: the runner had approximately 85 MB free and the linker/image-generation steps reported `No space left on device`. No full-image artifact was produced by runs #2–#4.
+
+### Aggregate workflow runtime snapshot
+
+The repository's 18 visible workflow runs report approximately **68,283,000 ms = 1,138.05 minutes = 18.97 hours** aggregate run duration:
+
+- Full-image inspection: 4 runs, 158.37 minutes.
+- Kernel validation: 14 runs, 979.68 minutes.
+
+This is aggregate workflow duration, not a confirmed account-level billable Actions usage figure. The listed run actors were `5H4K1L`; the connected collaborator identity did not appear as the actor in this run list. Check the repository owner's GitHub billing/usage page for actual billable usage.
+
+### Pinned upstream image recipe — boot-chain replacement risk confirmed
+
+Static review of pinned upstream ImmortalWrt commit `4765b657625ec5bbda74b44400465fe043802b30` confirms:
+
+1. The sunxi SD-card image recipe passes the target-specific `u-boot-with-spl.bin` into `gen_sunxi_sdcard_img.sh`.
+2. The generator writes that newly built file at byte offset `0x2000` (8192 bytes), using `dd bs=1024 ... seek=8 conv=notrunc`.
+3. The A5E U-Boot package selects the A523 Trusted Firmware (BL31), sets the A523 environment/ATF selection, and installs the generated `u-boot-sunxi-with-spl.bin` for the SD-image recipe.
+4. The A5E environment script loads `uImage` from the FAT partition, uses partition 2's PARTUUID as the root device, and boots using `bootm`.
+
+Therefore, a successful standard full-image build would embed a newly built early boot chain at `0x2000`; it is not automatically a kernel/rootfs-only update and could replace the bootloader payload present in the known-working image.
+
+Pinned source references:
+- [sunxi image Makefile](https://github.com/immortalwrt/immortalwrt/blob/4765b657625ec5bbda74b44400465fe043802b30/target/linux/sunxi/image/Makefile)
+- [sunxi SD-card image generator](https://github.com/immortalwrt/immortalwrt/blob/4765b657625ec5bbda74b44400465fe043802b30/target/linux/sunxi/image/gen_sunxi_sdcard_img.sh)
+- [Cortex-A53 image profiles](https://github.com/immortalwrt/immortalwrt/blob/4765b657625ec5bbda74b44400465fe043802b30/target/linux/sunxi/image/cortexa53.mk)
+- [sunxi U-Boot package definition](https://github.com/immortalwrt/immortalwrt/blob/4765b657625ec5bbda74b44400465fe043802b30/package/boot/uboot-sunxi/Makefile)
+- [A523 U-Boot environment](https://github.com/immortalwrt/immortalwrt/blob/4765b657625ec5bbda74b44400465fe043802b30/package/boot/uboot-sunxi/uEnv-a523.txt)
+
+The implementation plan is recorded in [docs/BOOTLOADER-PRESERVATION-PLAN.md](docs/BOOTLOADER-PRESERVATION-PLAN.md). It remains a plan only: no image-generation workflow or recipe was modified to preserve or replace bootloader bytes.
+
+### Reference bootloader status — still awaiting raw-file verification
+
+The extraction report in the `reference-files` branch describes an integrated candidate at offset `0x2000`, length 896,329 bytes, with a reported SHA-256. Those figures remain **report-derived, not independently verified against the binary bytes**. The ZIP archives have not yet been independently extracted and hashed in this review. The user plans to upload the individual extracted files later.
+
+Do not treat a filename, report, or copied checksum as binary verification. When the actual bytes become available, independently calculate the hash and length, confirm the extraction against the original image region, inspect the partition boundary/padding, and compare the known-working boot chain with the newly generated candidate.
+
+### Current decision and next actions
+
+1. Continue static source and workflow review only while the runner-allocation failure remains unexplained.
+2. Do not launch duplicate or expensive full-image runs; the cleanup mitigation has not been exercised.
+3. When the user uploads the bootloader files, verify their actual bytes, size, provenance and SHA-256.
+4. Only after byte verification, design a fail-closed image assembly path that can preserve the approved known-working early boot payload exactly at offset `0x2000`; validate boot script, FIT, partition layout and PARTUUID separately.
+5. Keep all generated images marked **UNTESTED / DO NOT FLASH** until the boot chain, exact 1 GB DRAM compatibility, recovery path and separate-SD-card hardware test are established.
+
+**Safety and scope:** do not write SPI, SPL, TF-A, U-Boot or DRAM timing data. Keep the known-working card and SPI contents untouched. No workflow was started during this documentation update.
