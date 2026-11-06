@@ -661,3 +661,12 @@ Do not treat a filename, report, or copied checksum as binary verification. When
 - Inspected run attempt 1 job metadata: one job, `runner_id=0`, empty `runner_name`, empty `steps`, started and completed within three seconds. This confirms the job did not reach any workflow step on a named runner.
 - The available metadata therefore points to a runner/job-start failure rather than a reported Python test failure, but the exact platform-side cause is not exposed by the connector. Keep the cause classified as **unresolved**.
 - No rerun or manual dispatch. The documentation-only commits do not match the workflow's path filters and did not trigger another run.
+
+
+### GitHub Actions account limit confirmed — 2026-11-06
+
+- User confirmed GitHub displayed: “The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings”, and clarified that the account's included 2,000 Actions minutes have been exhausted.
+- This explains run **42208328230**: GitHub blocked the job before assigning a runner or starting any workflow step. It is an account billing/usage-limit gate, **not** a helper-code or unit-test failure. No CI test verdict can be inferred from that run.
+- Do not increase spending or enable paid usage unless the user chooses to. No rerun has been started. Retry the isolated helper workflow only after the user confirms the Actions usage/billing restriction is resolved and authorizes a retry.
+- Local validation remains unchanged: py_compile passed and 11/11 unit tests passed. The actual reference-binary assembly fixture remains outstanding.
+- No firmware/kernel build, merge, image assembly, flashing, or hardware write occurred. Scope remains only this ImmortalWrt repository.
