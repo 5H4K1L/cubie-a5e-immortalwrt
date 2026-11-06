@@ -164,3 +164,17 @@ Respect this boundary. The OpenWrt repository may be mentioned as historical com
 ## 11. Source of truth
 
 For detailed chronology, older run history, artifact inspection, IOMMU binding review and external source review, read [`update.md`](update.md). This handover is the concise starting point; when details conflict, prefer the newest dated correction in `update.md` and verify current GitHub state before acting.
+
+
+## 12. Latest CI status — 2026-11-06
+
+The corrected full-image workflow is currently running twice on project commit `ac81268307d21db160a8f28dca78abe27f88d8ad`:
+
+- [Run #2 — 42046450168](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42046450168)
+- [Run #3 — 42135715426](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42135715426)
+
+Latest check: both `image-inspection` jobs are in progress at **Build complete device image (CI inspection only)**. Both have passed checkout, dependency installation, feed preparation, A5E profile configuration and IOMMU patch application. The corrected patch path is now confirmed working in CI.
+
+Do not start another duplicate build while these runs are active. Continue monitoring both. Artifact inspection/upload has not yet completed and no full-image artifact is confirmed. A transient 404/BlobNotFound occurred when requesting live job logs; retry after completion if logs are needed.
+
+All generated firmware remains inspection-only and **DO NOT FLASH** until the embedded boot chain and exact 1 GB DRAM parameters are validated. The companion OpenWrt repository remains out of scope and untouched.
