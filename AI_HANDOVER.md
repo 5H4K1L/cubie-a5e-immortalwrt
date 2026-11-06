@@ -214,3 +214,6 @@ The helper requires the approved U-Boot/SPL binary (896,329 bytes; SHA-256 `2cc4
 The initial local validation recorded 9 tests passing against an equivalent implementation. Two more tests were added for an invalid partition boot flag and output equal to the source image; the expanded 11-test suite has not yet been run against the exact branch files. A disposable full-layout image using the real reference binary has not yet been assembled.
 
 **Do not dispatch or restart any workflow, merge the branch, or flash an image without explicit user authorization.** No workflow files changed or dispatched during this phase. Continue updating `update.md` and this handover whenever project work changes. Work only in `5H4K1L/cubie-a5e-immortalwrt`; the companion OpenWrt repository is out of scope.
+
+
+**Test-fixture correction:** a static review caught and corrected over-escaped MBR signature byte literals in the newly added regression tests. The fixture now writes actual bytes `55 aa` and `00 00`. The 11-test suite is still pending execution against the committed files; do not claim a pass yet.
