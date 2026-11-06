@@ -435,3 +435,41 @@ Do not dispatch another duplicate build while either run remains active. Monitor
 The available workflow-job-log download returned a transient 404/BlobNotFound while the jobs were still running; rely on Actions run/job/step status until logs become available after completion.
 
 Safety remains unchanged: CI output is inspection-only and **DO NOT FLASH** pending exact boot-chain and 1 GB DRAM validation. No actions have been taken in the companion OpenWrt repository.
+
+
+## 2026-11-06 — Full-image rerun diagnosis and disk-space mitigation
+
+The two corrected full-image workflow runs have now finished:
+
+- Run #2: [42046450168](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42046450168) — cancelled during the image build.
+- Run #3: [42135715426](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/runs/42135715426) — failed during the image build.
+
+Both runs passed checkout, dependency installation, feed preparation, exact A5E profile configuration, IOMMU symbol assertions and application of the Linux 6.18 IOMMU callback patch. The previous patch-path issue is therefore resolved.
+
+### Run #3 failure root cause
+
+The failed job log identifies runner disk exhaustion, not an IOMMU or source compilation defect:
+
+- Runner warning: only 85 MB disk space remained.
+- Linker error: `vmlinux.o: final close failed: No space left on device`.
+- Subsequent kernel/initramfs copy and SquashFS creation also failed with `No space left on device`.
+- The complete image build exited with code 2.
+- Image inspection and artifact upload were skipped. No full-image artifact was produced.
+
+### Workflow mitigation committed
+
+The full-image workflow now includes a pre-build runner cleanup step that removes large unused preinstalled SDKs/caches (Android, .NET, GHC, Boost, Swift and GHCup), cleans apt caches and prunes unused Docker data, then reports available disk space. The dependency-install step also cleans apt cache after installation.
+
+This mitigation has been committed to the ImmortalWrt repository only. It has not yet been validated by a fresh full-image run.
+
+### Restart requirement
+
+The workflow remains manual-only (`workflow_dispatch`). The connected GitHub actions do not expose a workflow-dispatch operation, so a fresh run cannot be started from this session. Do not rerun run #3's old failed job: that would reuse its old workflow revision without the disk cleanup. Start the updated workflow from:
+
+[Open the ImmortalWrt full-image workflow](https://github.com/5H4K1L/cubie-a5e-immortalwrt/actions/workflows/full-image-inspection.yml)
+
+Choose **Run workflow → main → Run workflow**. Then verify the new run's cleanup output and available disk space before allowing the full build to continue.
+
+**Safety:** no complete image or inspection artifact exists from runs #2/#3. Any future image remains **UNTESTED / DO NOT FLASH** until the embedded U-Boot/SPL and exact 1 GB DRAM configuration have been validated against the known-working boot chain.
+
+**Scope:** only `5H4K1L/cubie-a5e-immortalwrt` was inspected and changed. The companion OpenWrt repository was not touched and no workflow was started there.
