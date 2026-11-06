@@ -239,3 +239,12 @@ The initial local validation recorded 9 tests passing against an equivalent impl
 
 
 **Additional CI metadata:** the sole job in run `42208328230` has `runner_id=0`, an empty runner name, and no steps; it started and completed within three seconds. It never reached the Python commands. The exact platform-side cause remains unknown. Do not treat this as a test assertion failure and do not rerun/dispatch without authorization.
+
+
+### GitHub Actions account limit confirmed — 2026-11-06
+
+- User confirmed the GitHub job-start notice about failed account payments or a spending limit, and clarified that the account's included 2,000 Actions minutes are exhausted.
+- This is the confirmed reason run 42208328230 never started: GitHub blocked runner allocation before any workflow step. It is an account usage/billing restriction, not a code or test failure. The CI result provides no test verdict.
+- Do not enable paid usage or increase spending unless the user chooses. No rerun has been started. Retry the isolated helper workflow only after the user confirms the restriction is resolved and authorizes it.
+- Local syntax check and 11/11 unit tests remain passed. Actual reference-binary assembly is still pending. No firmware build, merge, image assembly, flashing, or hardware write occurred.
+- Continue work only in 5H4K1L/cubie-a5e-immortalwrt.
