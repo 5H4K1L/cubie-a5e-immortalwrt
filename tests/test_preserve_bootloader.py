@@ -75,6 +75,26 @@ class PreserveBootloaderTests(unittest.TestCase):
         with self.assertRaises(module.ValidationError):
             module.assemble(self.image, self.boot, self.output)
 
+    def test_rejects_partition_past_end_of_image(self):
+        self._write_mbr(self.image, first_lba=2048)
+        data = bytearray(self.image.read_bytes())
+        entry = 446
+        data[entry + 12:entry + 16] = (999999).to_bytes(4, "little")
+        self.image.write_bytes(data)
+        with self.assertRaises(module.ValidationError):
+            module.assemble(self.image, self.boot, self.output)
+
+    def test_rejects_overlapping_mbr_partitions(self):
+        self._write_mbr(self.image, first_lba=8)
+        data = bytearray(self.image.read_bytes())
+        second = 446 + 16
+        data[second + 4] = 0x83
+        data[second + 8:second + 12] = (10).to_bytes(4, "little")
+        data[second + 12:second + 16] = (100).to_bytes(4, "little")
+        self.image.write_bytes(data)
+        with self.assertRaises(module.ValidationError):
+            module.assemble(self.image, self.boot, self.output)
+
     def test_refuses_to_overwrite_output(self):
         self.output.write_bytes(b"do not overwrite")
         with self.assertRaises(module.ValidationError):
