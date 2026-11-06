@@ -217,3 +217,12 @@ The initial local validation recorded 9 tests passing against an equivalent impl
 
 
 **Test-fixture correction:** a static review caught and corrected over-escaped MBR signature byte literals in the newly added regression tests. The fixture now writes actual bytes `55 aa` and `00 00`. The 11-test suite is still pending execution against the committed files; do not claim a pass yet.
+
+
+### Phase 3 validation update — 2026-11-06
+
+- Exact committed helper and 11-test suite reconstructed from branch content in an isolated local test directory: `py_compile` passed; **11/11 unit tests passed**.
+- Additional sparse disposable image fixture used the documented partition starts (p1 LBA 2048; p2 LBA 45056) and an 896,329-byte generated payload. Verified first-partition offset 1,048,576, bootloader replacement exclusive end 904,521, read-back hash, unchanged source, unchanged bytes outside replacement range, and unchanged image size.
+- The generated payload was not the actual approved reference binary. Although that binary's size/hash were previously verified, assembly using the actual binary remains pending. This is host-side fixture validation only, not DRAM/SPL/runtime validation and not flash authorization.
+- No workflow files changed or dispatched; no firmware image assembled; no hardware/boot media modified.
+- Next step: make the actual pinned reference binary available to the local test environment and repeat disposable-image assembly with its real SHA-256, then consider adding the unit tests to CI. Continue work only in this ImmortalWrt repository.
