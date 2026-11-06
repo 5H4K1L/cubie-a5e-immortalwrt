@@ -60,3 +60,15 @@ The known-working image report identifies the integrated `u-boot-sunxi-with-spl.
 
 ## User upload pending
 The user will upload the extracted binary files later. Until then, continue source/workflow/documentation review only; do not claim independent binary verification.
+
+
+## Additional upstream image-recipe review
+
+Static review of pinned upstream ImmortalWrt commit `4765b657625ec5bbda74b44400465fe043802b30` confirmed that the standard sunxi SD-card generator writes the newly built `u-boot-with-spl.bin` at byte offset 8192 (0x2000), using `dd bs=1024 seek=8`. The Cubie A5E U-Boot package selects the A523 Trusted Firmware (BL31) and generates its boot script from `uEnv-a523.txt`. The boot script loads `uImage` from the FAT partition and uses partition 2's PARTUUID as root.
+
+This confirms the primary bootloader-overwrite risk: a successful standard image build replaces the known-working early boot payload with a newly built one. A bootloader-preserving assembly design is documented separately in [BOOTLOADER-PRESERVATION-PLAN.md](BOOTLOADER-PRESERVATION-PLAN.md). It is intentionally a plan only; no workflow or image recipe was changed.
+
+Source review links:
+- [Upstream sunxi image recipe](https://github.com/immortalwrt/immortalwrt/blob/4765b657625ec5bbda74b44400465fe043802b30/target/linux/sunxi/image/Makefile)
+- [Upstream SD-card generator](https://github.com/immortalwrt/immortalwrt/blob/4765b657625ec5bbda74b44400465fe043802b30/target/linux/sunxi/image/gen_sunxi_sdcard_img.sh)
+- [Upstream A5E U-Boot package definition](https://github.com/immortalwrt/immortalwrt/blob/4765b657625ec5bbda74b44400465fe043802b30/package/boot/uboot-sunxi/Makefile)
