@@ -1,3 +1,7 @@
+> **Current handover notice (2026-11-06):** This file contains historical project context and may include instructions that predate the latest workflow investigation. Read [`docs/CURRENT-STATUS-2026-11-06.md`](docs/CURRENT-STATUS-2026-11-06.md) first, then [`docs/BOOTLOADER-PRESERVATION-PLAN.md`](docs/BOOTLOADER-PRESERVATION-PLAN.md). The current status note takes precedence if anything here conflicts with it. No workflow should be dispatched and no image should be flashed solely by following older instructions in this file.
+
+---
+
 # AI Handover — Radxa Cubie A5E ImmortalWrt
 
 **Last updated:** 2026-11-06  
