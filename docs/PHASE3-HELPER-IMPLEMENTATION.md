@@ -53,3 +53,13 @@ A static review caught over-escaped byte literals in the expanded MBR tests; the
 - The extra fixture did **not** use the actual reference U-Boot/SPL binary; actual-binary assembly remains outstanding. The test payload's length matched the approved binary but its content/hash was generated and the helper's expected digest was patched for this isolated fixture.
 - This does not validate DRAM initialization, SPL execution, kernel boot, device tree, root filesystem, or hardware. Candidate outputs remain `UNTESTED — DO NOT FLASH`.
 - No workflow was modified or dispatched, and no firmware image or hardware was touched.
+
+
+## Isolated CI workflow update — 2026-11-06
+
+- Added `.github/workflows/bootloader-preservation-tests.yml` to run Python syntax compilation, the 11 helper unit tests, and `git diff --check`, separately from firmware builds.
+- Its automatic push-triggered run #1 (ID `42208328230`) completed with `failure` after roughly four seconds. The job endpoint returned no step details and the log endpoint returned `BlobNotFound`; the cause is unknown and cannot be attributed to the helper tests.
+- No rerun was started. The independently executed local validation remains 11/11 tests passing plus successful `py_compile`.
+- The actual reference binary has not yet been used in a helper assembly fixture in the local runtime. Do not treat the generated-payload fixture as actual-binary validation.
+- Existing firmware/kernel workflows were not modified or dispatched. No firmware image was built, flashed, or written to hardware.
+- Next gate: establish the CI failure cause before any rerun or expansion to a CI integration fixture using the `reference-files` branch binary.
