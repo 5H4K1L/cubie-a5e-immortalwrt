@@ -3,7 +3,7 @@ name: A5E bootloader-preservation helper tests
 on:
   push:
     branches:
-      - feature/bootloader-preservation-helper
+      - main
     paths:
       - "scripts/preserve_bootloader.py"
       - "tests/test_preserve_bootloader.py"
